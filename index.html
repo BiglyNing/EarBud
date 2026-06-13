@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EarBud Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel session-panel" aria-labelledby="session-title">
+        <div class="brand-row">
+          <div>
+            <p class="eyebrow">EarBud Phase 2</p>
+            <h1 id="session-title">Live Coaching Prototype</h1>
+          </div>
+          <div class="device-pill" id="deviceState">Mic standby</div>
+        </div>
+
+        <form class="goal-form" id="goalForm">
+          <label>
+            Conversation partner
+            <input id="partnerInput" type="text" placeholder="Jordan" autocomplete="off">
+          </label>
+          <label>
+            Outcome
+            <textarea id="goalInput" rows="4" placeholder="Ask for a project deadline extension while staying confident."></textarea>
+          </label>
+          <label>
+            Tone
+            <select id="toneInput">
+              <option value="calm">Calm</option>
+              <option value="direct">Direct</option>
+              <option value="warm">Warm</option>
+              <option value="confident">Confident</option>
+            </select>
+          </label>
+          <label>
+            Wake word
+            <input id="wakeWordInput" type="text" value="earbud" autocomplete="off">
+          </label>
+          <button class="primary-action" type="submit">Start Session</button>
+        </form>
+      </section>
+
+      <section class="panel coach-panel" aria-labelledby="coach-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Agent</p>
+            <h2 id="coach-title">Next Move</h2>
+          </div>
+          <div class="phase-chip" id="phaseChip">Setup</div>
+        </div>
+
+        <div class="suggestion-box" id="suggestionBox">
+          Set a goal to begin.
+        </div>
+
+        <div class="control-grid">
+          <button id="pauseButton" class="control-button" type="button" disabled>Pause</button>
+          <button id="regenerateButton" class="control-button" type="button" disabled>Regenerate</button>
+          <button id="endButton" class="control-button danger" type="button" disabled>End</button>
+        </div>
+
+        <label class="manual-entry">
+          Transcript input
+          <textarea id="manualTranscript" rows="3" placeholder="Type a line. Include the wake word when you want the agent to answer."></textarea>
+        </label>
+        <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
+      </section>
+
+      <section class="panel transcript-panel" aria-labelledby="transcript-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Session</p>
+            <h2 id="transcript-title">Transcript</h2>
+          </div>
+          <div class="status-dot" id="sessionStatus">Inactive</div>
+        </div>
+        <ol class="transcript-list" id="transcriptList"></ol>
+      </section>
+
+      <section class="panel summary-panel" aria-labelledby="summary-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Review</p>
+            <h2 id="summary-title">Follow-Ups</h2>
+          </div>
+        </div>
+        <ul class="followup-list" id="followupList">
+          <li>No follow-ups yet.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

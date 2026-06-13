@@ -4,22 +4,23 @@ This roadmap is a starting point for building EarBud from concept to prototype. 
 
 ## Phase 1: Product Foundation
 
-- Define core user flows.
-- Create product and technical documentation.
-- Decide initial platform.
-- Define privacy requirements.
-- Design conversation coaching flow.
-- Define the first code structure for the app, backend, and agent.
+- Define core user flows. Status: documented.
+- Create product and technical documentation. Status: added.
+- Decide initial platform. Status: iOS recommended for AirPods-first development.
+- Define privacy requirements. Status: documented.
+- Design conversation coaching flow. Status: documented.
+- Define the first code structure for the app, backend, and agent. Status: documented in implementation phases.
 
 ## Phase 2: Prototype
 
-- Build a mobile or desktop demo.
-- Add push-to-talk audio capture.
-- Add streaming transcription.
-- Let users set a conversation goal.
-- Generate short coaching suggestions from transcript chunks.
-- Show live suggestions in a basic UI.
-- Add the first agent interaction loop.
+- Build a desktop/browser demo. Status: browser prototype added.
+- Add always-listening session mode. Status: added with browser speech recognition where supported.
+- Add wake-word gated responses. Status: added with configurable wake word.
+- Add streaming transcription. Status: partial browser transcription path added.
+- Let users set a conversation goal. Status: added.
+- Generate short coaching suggestions from transcript chunks. Status: OpenAI-backed backend agent added.
+- Show live suggestions in a basic UI. Status: added.
+- Add the first agent interaction loop. Status: `/api/coach` backend route added.
 
 ## Phase 3: Earbud Experience
 
@@ -48,7 +49,7 @@ This roadmap is a starting point for building EarBud from concept to prototype. 
 
 ## Open Questions
 
-- Should the first prototype be mobile-first or desktop-first?
+- Should the next prototype be mobile-first or desktop-first?
 - Should live suggestions be spoken, visual, or both?
 - How much memory should the assistant keep by default?
 - What latency is acceptable for live coaching?

@@ -47,12 +47,13 @@ Deliverable:
 
 ## Phase 2: Audio Capture Prototype
 
-Goal: capture audio from the phone microphone first, then prepare for earbud input.
+Goal: capture continuous browser audio after the user starts a session, then prepare for phone and earbud input later.
 
 Steps:
 
 - Request microphone permissions.
-- Add push-to-talk recording.
+- Add always-listening recording after session start.
+- Add a wake word so the agent only responds when asked.
 - Add start and stop controls for an active session.
 - Stream or chunk audio locally.
 - Display recording state clearly in the UI.
@@ -62,6 +63,13 @@ Steps:
 Deliverable:
 
 - The app can capture user speech and pass audio chunks to the next layer.
+
+Current status:
+
+- Browser prototype added with continuous speech recognition where supported.
+- Wake-word gated agent responses added.
+- Typed transcript fallback added for testing.
+- Native mobile microphone capture is postponed.
 
 ## Phase 3: Speech-To-Text Integration
 
@@ -106,6 +114,12 @@ Deliverable:
 
 - The user can set a goal and receive live text suggestions based on the conversation transcript.
 
+Current status:
+
+- Node backend agent route added at `/api/coach`.
+- The backend uses the OpenAI Responses API when `OPENAI_API_KEY` is configured.
+- The browser client sends recent transcript context only when the wake word is detected.
+
 ## Phase 5: Conversation Coaching MVP
 
 Goal: make the live coaching experience useful in realistic conversations.
@@ -145,6 +159,12 @@ Steps:
 Deliverable:
 
 - The app can use AirPods or supported earbuds for user speech input and private assistant output.
+
+Recommended path:
+
+- Keep the browser prototype focused on the agent loop first.
+- Add mobile or native iOS only after the backend agent and wake-word flow are stable.
+- Use native audio session APIs to prefer headset microphone input and route assistant speech to connected earbuds.
 
 ## Phase 7: Spoken Assistant Feedback
 
@@ -231,4 +251,3 @@ EarBud reaches full implementation when a user can:
 - Review a summary and next steps.
 - Choose what to save, edit, or delete.
 - Use saved tasks and preferences to guide the rest of their day.
-

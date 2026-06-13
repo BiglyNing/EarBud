@@ -67,6 +67,42 @@ The assistant does not take over the conversation. It helps you think in the mom
 - Memory for user-approved preferences and recurring goals.
 - Post-conversation summaries and next steps.
 
+## Phase 2 Prototype
+
+This repo includes a browser-based prototype and a Node backend agent for the Phase 2 flow:
+
+- Conversation goal setup.
+- Always-listening session mode after the user starts a session.
+- Wake-word gated agent responses.
+- Browser speech recognition when supported by the browser.
+- Typed transcript fallback for testing.
+- OpenAI-backed live coaching suggestions.
+- Session follow-ups and review state.
+
+## Run The Prototype
+
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Create a `.env` file using [.env.example](.env.example), then set `OPENAI_API_KEY`.
+
+Run it with:
+
+```powershell
+npm start
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+After starting a session, EarBud listens continuously. It only asks the backend agent for a suggestion when a transcript line includes the wake word, which defaults to `earbud`.
+
 ## Important Privacy Note
 
 EarBud is built around sensitive audio. Any production version should clearly handle:
