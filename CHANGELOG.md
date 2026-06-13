@@ -5,6 +5,9 @@ All notable changes to EarBud will be documented in this file.
 ## Unreleased
 
 - Removed the Expo mobile prototype to defer phone implementation.
+- Added backend audio transcription endpoint.
+- Added browser recording mode that sends short audio chunks to backend transcription.
+- Added backend readiness checks and speech-to-text documentation.
 - Added Node backend agent route using the OpenAI Responses API.
 - Changed the browser prototype from push-to-talk to continuous listening after session start.
 - Added configurable wake-word gated agent responses.

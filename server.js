@@ -1,11 +1,19 @@
 import "dotenv/config";
 import express from "express";
-import OpenAI from "openai";
+import multer from "multer";
+import OpenAI, { toFile } from "openai";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const model = process.env.OPENAI_MODEL || "gpt-5.5";
+const transcriptionModel = process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
 const client = process.env.OPENAI_API_KEY ? new OpenAI() : null;
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024
+  }
+});
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
@@ -14,8 +22,44 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     agentReady: Boolean(client),
-    model
+    transcriptionReady: Boolean(client),
+    model,
+    transcriptionModel
   });
+});
+
+app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
+  if (!client) {
+    res.status(503).json({
+      error: "OPENAI_API_KEY is not set. Add it to your environment or .env file to enable backend transcription."
+    });
+    return;
+  }
+
+  if (!req.file?.buffer) {
+    res.status(400).json({ error: "Audio file is required." });
+    return;
+  }
+
+  try {
+    const filename = req.file.originalname || "audio.webm";
+    const file = await toFile(req.file.buffer, filename, {
+      type: req.file.mimetype || "audio/webm"
+    });
+    const transcription = await client.audio.transcriptions.create({
+      file,
+      model: transcriptionModel
+    });
+
+    res.json({
+      text: transcription.text || ""
+    });
+  } catch (error) {
+    console.error("Transcription failed:", error);
+    res.status(500).json({
+      error: "The backend transcription service failed."
+    });
+  }
 });
 
 app.post("/api/coach", async (req, res) => {
@@ -99,4 +143,5 @@ function parseAgentJson(text) {
 app.listen(port, () => {
   console.log(`EarBud running at http://localhost:${port}`);
   console.log(client ? `Backend agent enabled with ${model}` : "Backend agent disabled: OPENAI_API_KEY is not set.");
+  console.log(client ? `Backend transcription enabled with ${transcriptionModel}` : "Backend transcription disabled: OPENAI_API_KEY is not set.");
 });

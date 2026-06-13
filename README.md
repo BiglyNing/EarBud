@@ -75,6 +75,7 @@ This repo includes a browser-based prototype and a Node backend agent for the Ph
 - Always-listening session mode after the user starts a session.
 - Wake-word gated agent responses.
 - Browser speech recognition when supported by the browser.
+- Optional backend audio transcription with OpenAI speech-to-text.
 - Typed transcript fallback for testing.
 - OpenAI-backed live coaching suggestions.
 - Session follow-ups and review state.
@@ -101,7 +102,7 @@ Open:
 http://localhost:3000
 ```
 
-After starting a session, EarBud listens continuously. It only asks the backend agent for a suggestion when a transcript line includes the wake word, which defaults to `earbud`.
+After starting a session, EarBud listens continuously. It can transcribe with browser speech recognition or send short audio chunks to the backend transcription route. It only asks the backend agent for a suggestion when a transcript line includes the wake word, which defaults to `earbud`.
 
 ## Important Privacy Note
 
@@ -122,6 +123,7 @@ See [Privacy and Safety](docs/privacy-and-safety.md) for the intended safety mod
 - [Architecture](docs/architecture.md)
 - [Conversation Coaching](docs/conversation-coaching.md)
 - [Implementation Phases](docs/implementation-phases.md)
+- [Speech-To-Text](docs/speech-to-text.md)
 - [Privacy and Safety](docs/privacy-and-safety.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

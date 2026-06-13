@@ -9,12 +9,18 @@ const state = {
   goal: "",
   tone: "calm",
   wakeWord: "earbud",
+  transcriptionMode: "browser",
   phase: "Setup",
   transcript: [],
   followUps: [],
   lastSuggestion: "Set a goal to begin.",
   recognition: null,
-  shouldRestartRecognition: false
+  shouldRestartRecognition: false,
+  mediaStream: null,
+  mediaRecorder: null,
+  transcribingAudio: false,
+  pendingAudioChunks: 0,
+  health: null
 };
 
 const elements = {
@@ -23,6 +29,8 @@ const elements = {
   goalInput: document.querySelector("#goalInput"),
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
+  transcriptionModeInput: document.querySelector("#transcriptionModeInput"),
+  backendStatus: document.querySelector("#backendStatus"),
   deviceState: document.querySelector("#deviceState"),
   phaseChip: document.querySelector("#phaseChip"),
   suggestionBox: document.querySelector("#suggestionBox"),
@@ -38,12 +46,20 @@ const elements = {
 
 function render() {
   elements.deviceState.textContent = state.listening
-    ? "Always listening"
-    : SpeechRecognition
-      ? "Mic standby"
-      : "Typed mode";
+    ? state.transcriptionMode === "backend"
+      ? "Recording chunks"
+      : "Always listening"
+    : state.transcriptionMode === "backend"
+      ? "Backend STT"
+      : SpeechRecognition
+        ? "Mic standby"
+        : "Typed mode";
 
-  elements.phaseChip.textContent = state.requestingAgent ? "Thinking" : state.phase;
+  elements.phaseChip.textContent = state.requestingAgent
+    ? "Thinking"
+    : state.transcribingAudio
+      ? "Transcribing"
+      : state.phase;
   elements.suggestionBox.textContent = state.lastSuggestion;
   elements.sessionStatus.textContent = state.active ? (state.paused ? "Paused" : "Active") : "Inactive";
   elements.sessionStatus.classList.toggle("active", state.active && !state.paused);
@@ -53,6 +69,7 @@ function render() {
   elements.endButton.disabled = !state.active;
   elements.addLineButton.disabled = !state.active || state.paused;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
+  renderBackendStatus();
 
   elements.transcriptList.innerHTML = "";
   state.transcript.forEach((line, index) => {
@@ -85,16 +102,50 @@ function startSession(event) {
   state.goal = elements.goalInput.value.trim() || "move the conversation toward a clear next step";
   state.tone = elements.toneInput.value;
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
+  state.transcriptionMode = elements.transcriptionModeInput.value;
+  if (state.transcriptionMode === "backend" && state.health && !state.health.transcriptionReady) {
+    state.transcriptionMode = "browser";
+    elements.transcriptionModeInput.value = "browser";
+    state.lastSuggestion = "Backend transcription needs OPENAI_API_KEY. Falling back to browser speech recognition.";
+  }
   elements.wakeWordInput.value = state.wakeWord;
   state.active = true;
   state.paused = false;
   state.phase = "Listening";
   state.transcript = [];
   state.followUps = [];
-  state.lastSuggestion = `Listening continuously. Say "${state.wakeWord}" when you want the agent to suggest what to say.`;
+  if (!state.lastSuggestion.includes("OPENAI_API_KEY")) {
+    state.lastSuggestion = `Listening continuously. Say "${state.wakeWord}" when you want the agent to suggest what to say.`;
+  }
 
-  startContinuousListening();
+  startListeningForMode();
   render();
+}
+
+function renderBackendStatus() {
+  if (!state.health) {
+    elements.backendStatus.textContent = "Checking backend...";
+    return;
+  }
+
+  const agentStatus = state.health.agentReady ? "agent ready" : "agent needs API key";
+  const transcriptionStatus = state.health.transcriptionReady ? "backend transcription ready" : "backend transcription needs API key";
+  elements.backendStatus.textContent = `${agentStatus}; ${transcriptionStatus}.`;
+}
+
+async function fetchHealth() {
+  try {
+    const response = await fetch("/api/health");
+    state.health = await response.json();
+  } catch {
+    state.health = {
+      ok: false,
+      agentReady: false,
+      transcriptionReady: false
+    };
+  } finally {
+    render();
+  }
 }
 
 function normalizeWakeWord(value) {
@@ -123,6 +174,15 @@ function addTranscriptLine(text) {
   }
 
   render();
+}
+
+function startListeningForMode() {
+  if (state.transcriptionMode === "backend") {
+    startBackendRecording();
+    return;
+  }
+
+  startContinuousListening();
 }
 
 function containsWakeWord(text) {
@@ -228,6 +288,93 @@ function setupRecognition() {
   };
 }
 
+async function startBackendRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    state.lastSuggestion = "Backend transcription needs microphone recording support. Use browser speech recognition or typed input.";
+    render();
+    return;
+  }
+
+  if (state.mediaRecorder?.state === "recording") return;
+
+  try {
+    state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const options = getRecorderOptions();
+    state.mediaRecorder = new MediaRecorder(state.mediaStream, options);
+
+    state.mediaRecorder.onstart = () => {
+      state.listening = true;
+      render();
+    };
+
+  state.mediaRecorder.ondataavailable = (event) => {
+      if (event.data?.size > 0 && state.active && !state.paused) {
+        sendAudioChunk(event.data);
+      }
+    };
+
+    state.mediaRecorder.onerror = () => {
+      state.lastSuggestion = "Audio recording failed. Typed transcript input still works.";
+      state.listening = false;
+      render();
+    };
+
+    state.mediaRecorder.onstop = () => {
+      state.listening = false;
+      render();
+    };
+
+    state.mediaRecorder.start(5000);
+  } catch {
+    state.lastSuggestion = "Microphone access was not available. Use typed transcript input to keep testing.";
+    state.listening = false;
+    render();
+  }
+}
+
+function getRecorderOptions() {
+  const supportedTypes = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4"
+  ];
+  const mimeType = supportedTypes.find((type) => MediaRecorder.isTypeSupported(type));
+  return mimeType ? { mimeType } : undefined;
+}
+
+async function sendAudioChunk(blob) {
+  state.pendingAudioChunks += 1;
+  state.transcribingAudio = true;
+  render();
+
+  try {
+    const extension = blob.type.includes("mp4") ? "mp4" : "webm";
+    const formData = new FormData();
+    formData.append("audio", blob, `chunk.${extension}`);
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Transcription failed.");
+    }
+
+    if (payload.text?.trim()) {
+      addTranscriptLine(payload.text);
+    }
+  } catch (error) {
+    state.phase = "Transcription Offline";
+    state.lastSuggestion = error.message || "Backend transcription is unavailable.";
+  } finally {
+    state.pendingAudioChunks = Math.max(0, state.pendingAudioChunks - 1);
+    state.transcribingAudio = state.pendingAudioChunks > 0;
+    render();
+  }
+}
+
 function startContinuousListening() {
   if (!state.recognition || state.listening || !state.active || state.paused) return;
 
@@ -248,11 +395,11 @@ function stopContinuousListening() {
 function togglePause() {
   state.paused = !state.paused;
   if (state.paused) {
-    stopContinuousListening();
+    stopAllListening();
     state.lastSuggestion = "Session paused.";
   } else {
     state.lastSuggestion = `Session resumed. Listening continuously for "${state.wakeWord}".`;
-    startContinuousListening();
+    startListeningForMode();
   }
   render();
 }
@@ -268,7 +415,7 @@ function findLastWakeLine() {
 }
 
 function endSession() {
-  stopContinuousListening();
+  stopAllListening();
   state.active = false;
   state.paused = false;
   state.listening = false;
@@ -278,6 +425,25 @@ function endSession() {
   }
   state.lastSuggestion = "Session ended. Review follow-ups before saving anything long term.";
   render();
+}
+
+function stopAllListening() {
+  stopContinuousListening();
+  stopBackendRecording();
+}
+
+function stopBackendRecording() {
+  if (state.mediaRecorder?.state === "recording") {
+    state.mediaRecorder.stop();
+  }
+
+  if (state.mediaStream) {
+    state.mediaStream.getTracks().forEach((track) => track.stop());
+  }
+
+  state.mediaRecorder = null;
+  state.mediaStream = null;
+  state.listening = false;
 }
 
 elements.goalForm.addEventListener("submit", startSession);
@@ -290,4 +456,5 @@ elements.regenerateButton.addEventListener("click", regenerateSuggestion);
 elements.endButton.addEventListener("click", endSession);
 
 setupRecognition();
+fetchHealth();
 render();

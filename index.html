@@ -39,6 +39,14 @@
             Wake word
             <input id="wakeWordInput" type="text" value="earbud" autocomplete="off">
           </label>
+          <label>
+            Transcription
+            <select id="transcriptionModeInput">
+              <option value="browser">Browser speech recognition</option>
+              <option value="backend">Backend audio transcription</option>
+            </select>
+          </label>
+          <p class="helper-text" id="backendStatus">Checking backend...</p>
           <button class="primary-action" type="submit">Start Session</button>
         </form>
       </section>

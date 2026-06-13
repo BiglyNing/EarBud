@@ -67,6 +67,7 @@ Deliverable:
 Current status:
 
 - Browser prototype added with continuous speech recognition where supported.
+- Backend audio chunk transcription added at `/api/transcribe`.
 - Wake-word gated agent responses added.
 - Typed transcript fallback added for testing.
 - Native mobile microphone capture is postponed.
@@ -87,6 +88,13 @@ Steps:
 Deliverable:
 
 - The app can listen during a session and produce a near-real-time transcript.
+
+Current status:
+
+- Browser speech recognition is available as the lowest-friction transcription path.
+- Backend chunk transcription is available when `OPENAI_API_KEY` is configured.
+- The frontend can record short audio chunks with `MediaRecorder` and send them to `/api/transcribe`.
+- The app checks backend readiness and falls back to browser speech recognition when backend transcription is unavailable.
 
 ## Phase 4: Agent Interaction Layer
 

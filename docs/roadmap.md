@@ -6,32 +6,55 @@ This roadmap is a starting point for building EarBud from concept to prototype. 
 
 - Define core user flows. Status: documented.
 - Create product and technical documentation. Status: added.
-- Decide initial platform. Status: iOS recommended for AirPods-first development.
+- Decide initial platform. Status: browser prototype first, native iOS later for AirPods.
 - Define privacy requirements. Status: documented.
 - Design conversation coaching flow. Status: documented.
 - Define the first code structure for the app, backend, and agent. Status: documented in implementation phases.
 
-## Phase 2: Prototype
+## Phase 2: Browser Prototype
 
-- Build a desktop/browser demo. Status: browser prototype added.
-- Add always-listening session mode. Status: added with browser speech recognition where supported.
-- Add wake-word gated responses. Status: added with configurable wake word.
-- Add streaming transcription. Status: partial browser transcription path added.
-- Let users set a conversation goal. Status: added.
-- Generate short coaching suggestions from transcript chunks. Status: OpenAI-backed backend agent added.
-- Show live suggestions in a basic UI. Status: added.
+- Build a desktop/browser demo. Status: complete.
+- Add always-listening session mode. Status: complete.
+- Add wake-word gated responses. Status: complete.
+- Let users set a conversation goal. Status: complete.
+- Show live suggestions in a basic UI. Status: complete.
+- Add typed transcript fallback. Status: complete.
+
+## Phase 3: Speech-To-Text Integration
+
+- Add browser speech recognition. Status: complete for supported browsers.
+- Add backend speech-to-text service. Status: complete with `/api/transcribe`.
+- Add continuous audio chunk recording. Status: complete with `MediaRecorder`.
+- Add backend readiness checks. Status: complete.
+- Keep wake-word gating across all transcription modes. Status: complete.
+- Document transcription setup. Status: complete.
+
+## Phase 4: Agent Interaction Layer
+
 - Add the first agent interaction loop. Status: `/api/coach` backend route added.
+- Generate short coaching suggestions from transcript chunks. Status: OpenAI-backed backend agent added.
+- Return structured phase, suggestion, and follow-up data. Status: added.
+- Test with a live API key. Status: pending.
+- Improve prompt handling and safety evaluation. Status: pending.
 
-## Phase 3: Earbud Experience
+## Phase 5: Conversation Coaching MVP
+
+- Add spoken suggestions.
+- Add controls to accept, dismiss, or regenerate a suggestion.
+- Add a cooldown so the agent does not interrupt too often.
+- Generate a post-conversation summary.
+- Turn agreed next steps into tasks.
+
+## Phase 6: Earbud Experience
 
 - Add support for AirPods or Bluetooth earbuds.
-- Add spoken suggestions.
+- Add private in-ear spoken suggestions.
 - Add mute, pause, and stop controls.
 - Improve latency.
 - Test in realistic noisy environments.
 - Show which audio input and output device is active.
 
-## Phase 4: Task Assistant
+## Phase 7: Task Assistant
 
 - Add daily task setup.
 - Add next-action recommendations.
@@ -39,7 +62,7 @@ This roadmap is a starting point for building EarBud from concept to prototype. 
 - Add summaries after conversations.
 - Add user-approved memory.
 
-## Phase 5: Trust And Safety
+## Phase 8: Trust And Safety
 
 - Add clear consent flows.
 - Add data deletion controls.
@@ -55,3 +78,4 @@ This roadmap is a starting point for building EarBud from concept to prototype. 
 - What latency is acceptable for live coaching?
 - How should EarBud handle multiple speakers?
 - What is the best first user segment?
+
