@@ -1,119 +1,121 @@
 # Architecture
 
-This document outlines a possible technical architecture for EarBud.
+This document outlines the local-first architecture for EarBud.
 
 ## High-Level System
 
-EarBud can be thought of as five major systems:
+EarBud can be thought of as five local prototype systems:
 
-1. Audio capture
-2. Speech transcription
-3. Context and memory
-4. Agent reasoning
-5. User feedback through earbuds and app UI
+1. Local browser UI
+2. Audio capture
+3. Speech transcription
+4. Conversation state and strategy engine
+5. Suggestion display
 
 ## Components
 
-### Mobile App
+### Local Browser App
 
-The mobile app is the control center for:
+The browser app is the control center for:
 
-- Pairing earbuds.
-- Starting and stopping listening sessions.
-- Setting conversation goals.
-- Reviewing summaries.
-- Managing privacy settings.
-- Deleting stored data.
+- Setting the conversation objective.
+- Choosing the tone and wake word/codeword.
+- Starting, pausing, and ending a session.
+- Showing the transcript and latest suggestion.
+- Reviewing follow-ups after the conversation.
+
+The app should run at `localhost` during development. It is not currently designed as an iPhone app or public hosted service.
 
 ### Audio Capture
 
-Audio is captured from the user's microphone or connected earbuds.
+Audio is captured from the computer microphone through the browser.
 
-The app should support clear user-controlled modes:
+The prototype should support clear user-controlled states:
 
 - Off
-- Push-to-talk
-- Active task session
-- Active conversation coaching session
+- Session started
+- Active coaching on
+- Active coaching paused or stopped
 
 ### Speech-To-Text
 
-Speech-to-text converts live audio into text for the agent.
+Speech-to-text converts live audio into text for the coach.
 
 The system should optimize for:
 
 - Low latency
-- Speaker separation when possible
-- Partial transcripts
-- Noise handling
-- Confidence scores
+- Clear transcript chunks
+- Browser speech recognition when available
+- Optional backend transcription for local testing
+- Graceful fallback to typed transcript input
 
-### Agent Orchestrator
+### Strategy Engine
 
-The agent orchestrator decides what to do with incoming context.
+The strategy engine decides whether the user needs advice.
 
 Responsibilities include:
 
-- Maintaining the active user goal.
-- Tracking the state of a conversation.
-- Detecting objections, decisions, and commitments.
-- Choosing when to interrupt.
+- Maintaining the active objective.
+- Tracking the state of the conversation.
+- Detecting objections, openings, power shifts, confusion, and closing moments.
+- Deciding whether to chime in or stay silent.
 - Generating short suggestions.
-- Logging follow-ups if the user allows it.
+- Creating follow-ups only when there is a concrete next step.
 
-### Memory Layer
+The reasoning style should draw from negotiation, strategic positioning, human behavior, execution, and focus. It should avoid deceptive or coercive advice.
 
-The memory layer stores user-approved context.
+### Session State
+
+The local session state stores temporary context.
 
 Examples:
 
-- Current tasks
-- Preferences
-- Important contacts
-- Past commitments
-- Reusable conversation strategies
+- Conversation partner
+- User objective
+- Desired tone
+- Wake word/codeword
+- Recent transcript
+- Active coaching status
+- Latest suggestion
+- Follow-ups for review
 
-Sensitive transcripts should be treated differently from durable user preferences. The user should control what becomes long-term memory.
+The default should be temporary session memory, not durable storage.
 
 ### Suggestion Delivery
 
-Suggestions can be delivered through:
+For the local prototype, suggestions are delivered through:
 
-- A short spoken whisper in the user's ear
-- A haptic signal
-- A glanceable phone notification
-- A live transcript and coaching screen
+- A live suggestion panel
+- Follow-up list
+- Optional future text-to-speech
 
 The default should be short and non-disruptive.
 
 ## Suggested Data Flow
 
-1. User starts a session and defines a goal.
-2. Audio is captured from earbuds or phone microphone.
-3. Audio is transcribed in near real time.
-4. Transcript chunks are sent to the agent.
-5. Agent updates the conversation state.
-6. Agent decides whether a suggestion is useful.
-7. Suggestion is delivered privately to the user.
-8. Session ends.
-9. User reviews summary and chooses what to save.
+1. User starts a local session and defines an objective.
+2. Audio is captured through the browser or text is entered manually.
+3. Transcript lines are added to the session.
+4. The wake word/codeword toggles active coaching on.
+5. While active, transcript chunks are sent to the coach for evaluation.
+6. The coach either returns a short suggestion or chooses silence.
+7. The UI shows the suggestion only when useful.
+8. The wake word/codeword toggles active coaching off.
+9. User reviews follow-ups and ends the session.
 
-## Early Prototype Stack
+## Current Prototype Stack
 
-An early prototype could use:
-
-- Mobile app: React Native, Swift, or Kotlin.
-- Audio capture: native mobile audio APIs.
-- Transcription: streaming speech-to-text provider.
-- Agent backend: Node.js, Python, or serverless functions.
-- Storage: Postgres plus encrypted object storage for optional transcripts.
-- Realtime transport: WebSocket or WebRTC data channel.
+- UI: vanilla HTML, CSS, and browser JavaScript.
+- Server: local Node.js and Express.
+- Transcription: browser speech recognition or optional backend transcription.
+- Agent backend: OpenAI Responses API when `OPENAI_API_KEY` is configured.
+- Storage: in-memory browser state for the active session.
 
 ## Engineering Priorities
 
-- Latency must be low enough to help during live conversation.
-- Audio handling must be explicit and user-controlled.
-- The agent should produce short suggestions, not long paragraphs.
-- Privacy controls should be built into the architecture from the beginning.
-- The system should work even when the assistant decides silence is better than speaking.
-
+- Run locally by default.
+- Keep activation and shutdown obvious.
+- Make the agent decide when silence is better than advice.
+- Keep suggestions short enough for live use.
+- Minimize transcript storage.
+- Keep the system easy to swap from OpenAI to another model provider later.

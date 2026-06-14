@@ -1,8 +1,8 @@
 # Conversation Coaching
 
-Conversation coaching is one of EarBud's main features.
+Conversation coaching is EarBud's central feature.
 
-The goal is to help a user communicate more clearly during an important conversation. The assistant listens for context, compares the conversation to the user's stated goal, and privately suggests useful next moves.
+The goal is to help a user complete a specific conversation objective. The assistant listens after activation, compares the conversation to the user's objective, and privately suggests useful next moves.
 
 ## Setup
 
@@ -13,45 +13,63 @@ Before the conversation, the user gives EarBud:
 - Any background context.
 - The tone they want to maintain.
 - Boundaries or topics to avoid.
+- The wake word/codeword that turns active coaching on and off.
 
 Example:
 
 > "I am about to talk to my professor. I want to ask for help understanding why I got a low grade, and I want to stay respectful."
 
-## Coaching Modes
+## Coaching Model
 
-### Prep Mode
+### Prep
 
-Before the conversation, EarBud helps the user prepare.
+Before the conversation, EarBud can help frame the objective.
 
 It can suggest:
 
-- Opening lines
-- Key points
-- Possible objections
-- Questions to ask
-- A closing ask
+- The main ask
+- The strongest opening frame
+- Likely objections
+- Evidence or context to bring up
+- A fallback position
+- A clear closing question
 
-### Live Mode
+### Active Coaching
 
-During the conversation, EarBud listens and provides short suggestions.
+The user says the wake word/codeword to activate coaching. After that, EarBud listens to the full conversation and can chime in whenever advice is likely to help. It does not require the wake word before every suggestion.
 
 Examples:
 
 - "Ask what timeline would work for them."
-- "Acknowledge the concern before repeating your ask."
+- "Label the concern before repeating your ask."
 - "This is a good moment to close."
-- "Ask for a specific next step."
+- "Do not defend yet. Ask what feels risky to them."
+- "Reframe this around the business cost of waiting."
 
-### Review Mode
+The user says the codeword again, clicks stop, or ends the session to turn active coaching off.
 
-After the conversation, EarBud summarizes:
+### Review
 
-- What was discussed
-- What was decided
-- Open questions
-- Follow-up tasks
+After the conversation, EarBud can summarize:
+
+- Whether the objective was reached
+- What was agreed
+- What remains unresolved
+- Follow-up actions
 - Suggested next message
+
+## Strategy Lenses
+
+EarBud should reason through several lenses:
+
+- Strategic awareness: incentives, leverage, status, and hidden dynamics.
+- Positioning: timing, terrain, and whether to press, pause, or redirect.
+- Negotiation: tactical empathy, labels, mirrors, calibrated questions, and concrete asks.
+- Human nature: emotional signals, ego protection, defensiveness, trust, and motive.
+- Execution: turning agreement into a small next action.
+- Focus: keeping the conversation from drifting away from the objective.
+
+The output should be original, practical coaching. It should not quote or reproduce source texts.
 
 ## Conversation State
 
@@ -61,11 +79,33 @@ Possible states include:
 
 - Opening
 - Building context
+- Testing alignment
 - Making the ask
 - Handling objections
-- Clarifying details
+- Reframing
+- Clarifying terms
 - Closing
 - Follow-up needed
+- Objective reached
+- Objective blocked
+
+## Chime-In Rules
+
+EarBud should speak up when:
+
+- The user is drifting away from the objective.
+- The other person gives an objection or hesitation.
+- There is a clear chance to ask for commitment.
+- The user should slow down, listen, or ask a clarifying question.
+- A small tactical shift would improve the user's position.
+
+EarBud should stay silent when:
+
+- The conversation is already moving well.
+- Advice would interrupt an important emotional moment.
+- The transcript is too unclear.
+- The user has not activated coaching.
+- The best move is to listen.
 
 ## Suggestion Rules
 
@@ -74,22 +114,23 @@ Live suggestions should be:
 - Short
 - Actionable
 - Respectful
-- Aligned with the user's stated goal
+- Aligned with the user's stated objective
 - Easy to say out loud
 - Timed only when useful
 
 The assistant should avoid:
 
-- Over-talking
-- Manipulative tactics
 - Deception
-- Pressure against the other person's interests
-- Suggesting false claims
-- Recording or storing data without clear permission
+- Coercion
+- Harassment
+- Manipulative pressure
+- False claims
+- Secretly extracting private information
+- Advice that ignores the other person's autonomy
 
 ## Example
 
-User goal:
+User objective:
 
 > "I want to convince my teammate to take ownership of the design handoff by Friday."
 
@@ -107,5 +148,4 @@ Possible user line:
 
 ## Ethical Boundary
 
-EarBud should help users communicate honestly and effectively. It should not help users manipulate, deceive, coerce, or secretly exploit another person.
-
+EarBud should help users communicate strategically and honestly. It should not help users manipulate, deceive, coerce, or exploit another person.

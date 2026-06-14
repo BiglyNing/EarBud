@@ -1,86 +1,100 @@
 # EarBud
 
-EarBud is an AI assistant that lives in your ears.
+EarBud is a local-first conversation coaching app.
 
-The idea is simple: you speak naturally through your AirPods or other earbuds, and an AI agent listens for the context of your day so it can help you move tasks forward. It can remind you what matters, suggest the next useful action, and help you navigate conversations when you have a specific outcome in mind.
+Before a conversation, you tell EarBud who you are talking to and what objective you want to accomplish. During the conversation, EarBud listens to the transcript, watches for moments that matter, and gives short tactical advice to help you move toward that objective.
+
+This project is no longer aimed at being a general daily assistant or an iPhone app. The current direction is a desktop/browser prototype that runs locally.
 
 ## What It Does
 
 EarBud is designed to help you:
 
-- Turn goals into next actions throughout the day.
-- Get real-time coaching while moving between tasks, meetings, errands, and conversations.
-- Prepare for important conversations before they happen.
-- Receive suggested phrasing during a conversation when you are trying to reach a clear outcome.
-- Stay aligned with priorities without constantly opening an app.
+- Prepare for a specific conversation with a clear objective.
+- Track whether the conversation is moving toward or away from that objective.
+- Notice openings, objections, leverage points, confusion, and closing moments.
+- Get short suggestions for what to say or ask next.
+- Stay strategic without becoming deceptive, coercive, or manipulative.
+
+## Strategy Lens
+
+EarBud's advice should be influenced by practical ideas from strategy, negotiation, human behavior, and execution. Examples of useful lenses include:
+
+- `48 Laws of Power`: strategic awareness, incentives, status, leverage, and hidden dynamics.
+- `The Art of War`: positioning, timing, terrain, and knowing when not to engage.
+- `Never Split the Difference`: calibrated questions, tactical empathy, labels, mirrors, and clear asks.
+- `The Laws of Human Nature`: motives, emotional signals, blind spots, and social patterns.
+- `Atomic Habits`: small next actions, friction, cues, and follow-through.
+- `Deep Work`: attention, clarity, and protecting the objective from distraction.
+
+These are reasoning influences, not scripts to quote. EarBud should translate them into honest, situational guidance that a user can use in real conversation.
 
 ## Core Use Case
 
-Before a conversation, you tell EarBud what you are about to do and what outcome you want.
+Before a conversation, the user gives EarBud:
 
-For example:
+- The person or people involved.
+- The objective they want to accomplish.
+- Any relevant context.
+- The tone they want to maintain.
+- Any boundaries or topics to avoid.
+
+Example:
 
 > "I am about to talk to Jordan. I want to ask for an extension on the project deadline without sounding unprepared."
 
-EarBud listens to the conversation through your earbuds, tracks where the conversation is going, and privately suggests what you might say next.
-
-The assistant does not take over the conversation. It helps you think in the moment.
+EarBud then listens locally through the browser session. Once the user says the configured wake word, EarBud enters active coaching mode and continues monitoring the conversation. It can chime in whenever it has useful advice. It turns off only when the codeword is said again or the user ends the session.
 
 ## Example Flow
 
-1. You set an intention:
+1. The user sets an objective:
    "I am going into a meeting with my manager. I want approval to hire a contractor."
 
-2. EarBud creates a short strategy:
-   - Lead with the business problem.
-   - Explain the cost of waiting.
-   - Ask for a clear yes or no.
+2. EarBud creates a strategic frame:
+   - What outcome matters most?
+   - What resistance is likely?
+   - What evidence or framing improves the ask?
+   - What would count as a good fallback?
 
-3. During the conversation, EarBud listens for important signals:
+3. The user says the wake word to activate coaching.
+
+4. EarBud listens to the conversation and watches for:
    - Agreement
    - Hesitation
    - Objections
-   - Confusion
+   - Power dynamics
+   - Misalignment
    - Opportunity to close
 
-4. EarBud suggests a next line:
-   "I hear the budget concern. Would it help if I brought back two contractor options with different price ranges?"
+5. EarBud suggests a next move:
+   "Label the budget concern first, then ask what approval threshold would make this workable."
+
+6. The user says the codeword again to stop active coaching.
 
 ## Product Principles
 
-- Private by default.
-- Consent-aware.
+- Local-first prototype.
+- Objective-driven, not general-purpose.
+- User-controlled listening state.
 - Useful in the moment.
+- Strategic but ethical.
 - Human-controlled, never autonomous in conversations.
-- Focused on outcomes, not manipulation.
-- Designed for short, calm suggestions instead of distracting monologues.
+- Short suggestions instead of distracting monologues.
 
-## Planned Features
+## Current Prototype
 
-- Earbud-based voice capture.
-- Real-time speech-to-text.
-- Context-aware task guidance.
-- Conversation goal setup.
-- Live conversation coaching.
-- Suggested replies and follow-up prompts.
-- Daily planning and priority tracking.
-- Memory for user-approved preferences and recurring goals.
-- Post-conversation summaries and next steps.
+This repo includes a browser-based prototype and a Node backend agent:
 
-## Phase 2 Prototype
-
-This repo includes a browser-based prototype and a Node backend agent for the Phase 2 flow:
-
-- Conversation goal setup.
-- Always-listening session mode after the user starts a session.
-- Wake-word gated agent responses.
+- Conversation objective setup.
 - Browser speech recognition when supported by the browser.
 - Optional backend audio transcription with OpenAI speech-to-text.
 - Typed transcript fallback for testing.
-- OpenAI-backed live coaching suggestions.
+- Backend coaching suggestions.
 - Session follow-ups and review state.
 
-## Run The Prototype
+The implementation currently still uses wake-word gated requests. The intended product behavior is shifting to wake-word activation: after the codeword is spoken, EarBud should continue listening and decide when advice is useful until the codeword is spoken again.
+
+## Run Locally
 
 Install dependencies:
 
@@ -102,13 +116,13 @@ Open:
 http://localhost:3000
 ```
 
-After starting a session, EarBud listens continuously. It can transcribe with browser speech recognition or send short audio chunks to the backend transcription route. It only asks the backend agent for a suggestion when a transcript line includes the wake word, which defaults to `earbud`.
+The app is intended to run locally on your machine. Do not expose the local server publicly unless you have added proper authentication, consent flows, and production security controls.
 
 ## Important Privacy Note
 
-EarBud is built around sensitive audio. Any production version should clearly handle:
+EarBud is built around sensitive live conversation audio. Any real use should handle:
 
-- Consent from people being recorded or transcribed.
+- Consent from people being recorded or transcribed where required.
 - Local laws around audio recording.
 - Clear recording indicators.
 - User control over what is stored.
@@ -131,6 +145,4 @@ See [Privacy and Safety](docs/privacy-and-safety.md) for the intended safety mod
 
 ## Project Status
 
-EarBud is currently in the concept and planning stage.
-
-This repository contains the product direction and documentation foundation for building the assistant.
+EarBud is an early local prototype. The next major product change is to replace single wake-word requests with an active coaching mode that turns on and off with the codeword.

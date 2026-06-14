@@ -1,75 +1,96 @@
 # Product Vision
 
-EarBud is a real-time AI assistant for daily execution.
+EarBud is a local-first AI coach for high-stakes conversations.
 
-Most productivity tools ask users to stop what they are doing, open an app, type notes, organize tasks, and manually translate goals into action. EarBud is designed for the opposite workflow: the assistant stays with the user as they move through the day and helps them decide what to do next.
+The product helps a user enter a conversation with a clear objective, understand the live dynamics, and choose the next useful thing to say. It is not a general productivity assistant, a day planner, or an iPhone-first earbud product. The current target is a local desktop/browser prototype.
 
 ## Problem
 
-People often know what they want to accomplish, but lose momentum during the day because:
+People often know what they want from a conversation but lose the thread in real time because:
 
-- Tasks are scattered across apps, notes, messages, and memory.
-- Conversations create pressure in real time.
-- It is hard to remember the best phrasing when stakes are high.
-- Meetings and errands produce follow-ups that are easy to forget.
-- Existing assistants are usually reactive instead of present.
+- The other person introduces objections or emotional pressure.
+- The user forgets their desired outcome.
+- It is hard to notice leverage, timing, and power dynamics while speaking.
+- A strong ask can come out too vague, too early, or too defensive.
+- The user may need a calm outside perspective during the moment.
 
-EarBud solves this by giving the user a private assistant that can listen, understand context, and suggest the next useful move.
+EarBud solves this by privately tracking the conversation against the user's stated objective and suggesting short next moves when they are likely to help.
 
 ## Target Users
 
-EarBud is useful for people who spend their day making decisions, having conversations, and moving between tasks.
-
-Potential early users include:
+Early users are people who regularly need to navigate important conversations:
 
 - Founders and operators
 - Salespeople
-- Students
-- Job seekers
 - Managers
+- Job seekers
+- Students
 - Freelancers
-- People with busy personal schedules
+- People preparing for difficult personal or professional discussions
 
-## Primary Jobs To Be Done
+## Primary Job To Be Done
 
-### Plan My Day
+### Help Me Complete This Conversation Objective
 
-The user tells EarBud what they need to accomplish. EarBud helps prioritize, sequence, and adjust the plan as the day changes.
+The user tells EarBud who they are talking to and what they want to accomplish. EarBud listens after activation, evaluates the conversation state, and gives concise advice to help the user advance the objective.
 
-### Help Me Say The Right Thing
+Examples:
 
-The user tells EarBud the goal of an upcoming conversation. EarBud listens and suggests helpful next lines, questions, or pivots.
+- Ask for an extension without sounding unprepared.
+- Get a manager to approve a contractor.
+- Negotiate price without damaging trust.
+- Ask a teammate to own a deliverable.
+- Clarify a conflict and leave with a concrete next step.
 
-### Keep Me Moving
+## Strategic Reasoning
 
-EarBud notices when the user finishes something, gets stuck, or drifts away from the plan, then suggests the next practical step.
+EarBud's coaching should combine several practical lenses:
 
-### Capture Follow-Ups
+- Strategic awareness: who has leverage, what incentives are visible, and what is unsaid.
+- Positioning: whether the user should press, wait, clarify, reframe, or exit.
+- Negotiation: calibrated questions, tactical empathy, labels, mirrors, and concrete asks.
+- Human nature: emotion, ego, status, defensiveness, and trust.
+- Execution: turning agreement into a small next action.
+- Focus: protecting the main objective from distraction.
 
-After a meeting or conversation, EarBud summarizes what happened and turns commitments into action items.
+The assistant should not quote or imitate source texts. It should synthesize these ideas into direct, ethical guidance.
+
+## Activation Model
+
+EarBud has a clear session lifecycle:
+
+1. The user sets the conversation objective.
+2. The user starts a local session.
+3. EarBud transcribes locally when possible.
+4. The user says the wake word/codeword to activate coaching.
+5. EarBud continues monitoring the conversation.
+6. EarBud chimes in only when it has a useful suggestion.
+7. The user says the codeword again or clicks stop to end active coaching.
+
+The wake word is not just a single request trigger. It is a toggle for active coaching.
 
 ## Differentiators
 
-- Ear-first experience instead of screen-first experience.
-- Real-time guidance instead of after-the-fact notes.
-- Goal-directed conversation coaching.
+- Objective-first conversation coaching.
+- Local-first prototype instead of a cloud product by default.
+- Strategic reasoning tuned for negotiation, influence, and execution.
 - Short suggestions designed for live use.
-- Contextual awareness across the user's day.
+- Explicit ethical boundaries against deception and coercion.
+- User-controlled activation and shutdown.
 
 ## Product Tone
 
-EarBud should feel calm, direct, and helpful.
+EarBud should feel calm, strategic, and direct.
 
-It should not feel like a boss, a manipulator, or a noisy notification system. The assistant should make the user feel more capable, not more monitored.
+It should not feel like a manipulator, a spammy notification system, or a generic chatbot. The assistant should make the user more composed and effective while keeping the user's communication honest.
 
 ## Success Metrics
 
 Possible success metrics include:
 
-- Number of completed daily tasks.
-- Number of conversations prepared with a goal.
+- Percentage of sessions where the user reached a concrete next step.
 - User-rated usefulness of live suggestions.
-- Number of captured follow-ups.
-- Reduction in forgotten commitments.
-- User trust and comfort with privacy controls.
-
+- Number of moments where EarBud stayed silent appropriately.
+- Reduction in vague or missed asks.
+- User trust in the listening controls.
+- Latency between conversation signal and useful advice.

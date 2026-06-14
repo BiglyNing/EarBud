@@ -1,6 +1,6 @@
 # Privacy and Safety
 
-EarBud handles live audio, conversation context, and personal goals. That makes privacy and safety core product requirements, not optional features.
+EarBud handles live audio, conversation context, and personal objectives. That makes privacy and safety core product requirements, not optional features.
 
 ## Core Principles
 
@@ -8,19 +8,19 @@ EarBud handles live audio, conversation context, and personal goals. That makes 
 - People should know when they are being recorded or transcribed where required.
 - The app should clearly explain what is processed, stored, and deleted.
 - Sensitive data should be minimized.
-- Long-term memory should require user approval.
+- Long-term memory should not exist by default in the local prototype.
 - The assistant should help with honest communication, not manipulation.
 
 ## Listening Modes
 
 EarBud should make the current listening state obvious.
 
-Recommended modes:
+Recommended local modes:
 
 - Off: no audio capture.
-- Push-to-talk: captures only while the user holds a control.
-- Task session: listens for user commands and task context.
-- Conversation coaching: listens during a user-started conversation session.
+- Session started: transcript capture is available.
+- Active coaching on: the user has said the codeword and EarBud may suggest advice.
+- Active coaching off: transcript capture may continue for the session, but the coach should not chime in.
 
 ## Consent
 
@@ -50,13 +50,11 @@ Recommended defaults:
 
 Recommended security practices:
 
-- Encrypt data in transit.
-- Encrypt sensitive data at rest.
-- Use short-lived access tokens.
-- Store secrets outside the client app.
+- Run on `localhost` by default.
+- Store secrets outside the browser client.
 - Log only what is necessary for debugging.
-- Redact sensitive transcript content from analytics.
-- Provide account deletion and data export.
+- Redact sensitive transcript content from logs.
+- Provide local deletion controls before adding durable storage.
 
 ## Safety Boundaries
 
@@ -69,6 +67,7 @@ EarBud should not provide help with:
 - Evading consent requirements
 - Secretly extracting private information
 - Pressuring vulnerable people
+- Escalating conflict for tactical advantage
 
 The assistant should redirect toward honest, respectful communication.
 
@@ -81,4 +80,3 @@ Users should be able to answer these questions easily:
 - What did EarBud save?
 - How do I delete it?
 - How do I stop listening immediately?
-

@@ -1,81 +1,69 @@
 # Roadmap
 
-This roadmap is a starting point for building EarBud from concept to prototype. For a more detailed build sequence, see [Implementation Phases](implementation-phases.md).
+This roadmap reflects the pivot to a local-first conversation-objective coach. For a more detailed build sequence, see [Implementation Phases](implementation-phases.md).
 
 ## Phase 1: Product Foundation
 
-- Define core user flows. Status: documented.
-- Create product and technical documentation. Status: added.
-- Decide initial platform. Status: browser prototype first, native iOS later for AirPods.
+- Define the focused conversation coaching flow. Status: documented.
+- Reframe project away from general daily assistant behavior. Status: documented.
+- Set initial platform as local desktop/browser app. Status: documented.
 - Define privacy requirements. Status: documented.
-- Design conversation coaching flow. Status: documented.
-- Define the first code structure for the app, backend, and agent. Status: documented in implementation phases.
+- Define strategic coaching lenses. Status: documented.
+- Define wake word/codeword activation model. Status: documented.
 
 ## Phase 2: Browser Prototype
 
 - Build a desktop/browser demo. Status: complete.
-- Add always-listening session mode. Status: complete.
-- Add wake-word gated responses. Status: complete.
-- Let users set a conversation goal. Status: complete.
+- Let users set a conversation objective. Status: complete.
 - Show live suggestions in a basic UI. Status: complete.
 - Add typed transcript fallback. Status: complete.
-
-## Phase 3: Speech-To-Text Integration
-
 - Add browser speech recognition. Status: complete for supported browsers.
-- Add backend speech-to-text service. Status: complete with `/api/transcribe`.
-- Add continuous audio chunk recording. Status: complete with `MediaRecorder`.
-- Add backend readiness checks. Status: complete.
-- Keep wake-word gating across all transcription modes. Status: complete.
-- Document transcription setup. Status: complete.
+- Add optional backend transcription. Status: complete with `/api/transcribe`.
 
-## Phase 4: Agent Interaction Layer
+## Phase 3: Activation Behavior
 
-- Add the first agent interaction loop. Status: `/api/coach` backend route added.
-- Generate short coaching suggestions from transcript chunks. Status: OpenAI-backed backend agent added.
-- Return structured phase, suggestion, and follow-up data. Status: added.
-- Test with a live API key. Status: pending.
-- Improve prompt handling and safety evaluation. Status: pending.
+- Replace one-shot wake-word requests with active coaching toggle. Status: pending.
+- Keep listening after the wake word/codeword is spoken. Status: pending.
+- Let the coach chime in when advice is useful. Status: pending.
+- Turn active coaching off when the codeword is spoken again. Status: pending.
+- Show active coaching state clearly in the UI. Status: pending.
+
+## Phase 4: Strategy Coach
+
+- Update the backend prompt for objective-completion coaching. Status: pending.
+- Add strategic lenses for negotiation, positioning, human behavior, execution, and focus. Status: pending.
+- Return structured state, suggestion, follow-up, and silence decisions. Status: pending.
+- Add a cooldown to prevent too many interruptions. Status: pending.
+- Improve safety evaluation for coercive or deceptive advice. Status: pending.
 
 ## Phase 5: Conversation Coaching MVP
 
-- Add spoken suggestions.
 - Add controls to accept, dismiss, or regenerate a suggestion.
-- Add a cooldown so the agent does not interrupt too often.
-- Generate a post-conversation summary.
-- Turn agreed next steps into tasks.
+- Track conversation state across the session.
+- Generate a post-conversation review.
+- Turn agreed next steps into follow-ups.
+- Add local deletion controls.
 
-## Phase 6: Earbud Experience
+## Phase 6: Optional Spoken Suggestions
 
-- Add support for AirPods or Bluetooth earbuds.
-- Add private in-ear spoken suggestions.
-- Add mute, pause, and stop controls.
-- Improve latency.
-- Test in realistic noisy environments.
-- Show which audio input and output device is active.
+- Add browser text-to-speech for suggestions.
+- Add voice controls.
+- Add interruption rules.
+- Test whether spoken guidance helps or distracts during real conversations.
 
-## Phase 7: Task Assistant
-
-- Add daily task setup.
-- Add next-action recommendations.
-- Add reminders and follow-ups.
-- Add summaries after conversations.
-- Add user-approved memory.
-
-## Phase 8: Trust And Safety
+## Phase 7: Trust And Safety
 
 - Add clear consent flows.
+- Add visible listening and active coaching indicators.
 - Add data deletion controls.
-- Add privacy settings.
-- Add transcript review before saving.
+- Add transcript review before saving anything.
 - Add safety filters for manipulative or deceptive coaching.
 
 ## Open Questions
 
-- Should the next prototype be mobile-first or desktop-first?
-- Should live suggestions be spoken, visual, or both?
-- How much memory should the assistant keep by default?
-- What latency is acceptable for live coaching?
-- How should EarBud handle multiple speakers?
+- How often should EarBud evaluate the transcript while active coaching is on?
+- Should suggestions appear visually, be spoken aloud, or both?
+- What cooldown prevents distraction without missing important openings?
+- How should EarBud handle multiple speakers in the transcript?
 - What is the best first user segment?
-
+- Should the default model provider be OpenAI, Gemini, or configurable?

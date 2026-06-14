@@ -1,93 +1,99 @@
 # Implementation Phases
 
-This document describes the path from initial code design to a fully working EarBud assistant that can listen through AirPods or other earbuds and interact with the user through an AI agent.
+This document describes the path from the current local prototype to a focused EarBud conversation-objective coach.
 
 ## Phase 0: Codebase Setup
 
-Goal: create the technical foundation for the project.
+Goal: maintain a simple local development foundation.
 
 Steps:
 
-- Choose the first platform: iOS is the strongest starting point for AirPods integration.
-- Create the app project and backend project.
-- Define shared data models for users, sessions, goals, transcripts, suggestions, and tasks.
+- Keep the first platform as a desktop/browser app running on `localhost`.
+- Keep the backend as a local Node/Express server.
+- Define shared data models for sessions, objectives, transcripts, suggestions, and follow-ups.
 - Add basic environment configuration for local development.
-- Add linting, formatting, and test setup.
-- Create a simple local development workflow.
+- Keep a simple local development workflow.
 
 Deliverable:
 
-- A working app shell and backend shell with basic health checks.
+- A working local app shell and backend shell with health checks.
+
+Current status:
+
+- Local browser app and Node backend exist.
+- Static UI is served by Express.
+- Backend health checks are available at `/api/health`.
 
 ## Phase 1: Product And UX Design
 
-Goal: define how the user starts, controls, and ends an assistant session.
+Goal: define how the user starts, activates, and ends a coaching session.
 
 Steps:
 
-- Design the main app screens:
-  - Home
-  - Daily goals
+- Design the local app screens:
   - Conversation setup
   - Live coaching session
-  - Session summary
-  - Privacy settings
-- Define the listening states:
+  - Session review
+  - Privacy and listening controls
+- Define listening states:
   - Off
-  - Push-to-talk
-  - Active task session
-  - Active conversation coaching session
-- Design controls for start, pause, mute, stop, and delete.
-- Define visual and audio indicators for when EarBud is listening.
-- Write the first conversation coaching prompt structure.
+  - Session started
+  - Active coaching on
+  - Active coaching stopped
+- Define a wake word/codeword toggle that turns active coaching on and off.
+- Write the first strategic coaching prompt structure.
+- Make the UI clearly show whether coaching is active.
 
 Deliverable:
 
-- A clickable or coded interface that shows the full user flow without real audio processing.
+- A coded interface that shows the full local user flow without requiring production audio infrastructure.
+
+Current status:
+
+- Conversation setup, live suggestion, transcript, and review UI exist.
+- The current implementation still treats the wake word as a single request trigger.
 
 ## Phase 2: Audio Capture Prototype
 
-Goal: capture continuous browser audio after the user starts a session, then prepare for phone and earbud input later.
+Goal: capture continuous browser audio after the user starts a session.
 
 Steps:
 
 - Request microphone permissions.
-- Add always-listening recording after session start.
-- Add a wake word so the agent only responds when asked.
-- Add start and stop controls for an active session.
+- Add local always-listening recording after session start.
+- Add a wake word/codeword toggle for active coaching.
+- Add start, pause, and stop controls.
 - Stream or chunk audio locally.
-- Display recording state clearly in the UI.
-- Save temporary local test audio only when needed for debugging.
-- Add a deletion path for any captured audio.
+- Display recording and coaching state clearly in the UI.
+- Avoid saving raw audio by default.
 
 Deliverable:
 
-- The app can capture user speech and pass audio chunks to the next layer.
+- The app can capture user speech and pass transcript chunks to the next layer.
 
 Current status:
 
 - Browser prototype added with continuous speech recognition where supported.
 - Backend audio chunk transcription added at `/api/transcribe`.
-- Wake-word gated agent responses added.
 - Typed transcript fallback added for testing.
-- Native mobile microphone capture is postponed.
+- Wake-word behavior needs to be changed from one-shot requests to active coaching toggle.
 
 ## Phase 3: Speech-To-Text Integration
 
-Goal: convert live audio into text the agent can reason about.
+Goal: convert live audio into text the coach can reason about.
 
 Steps:
 
-- Connect the audio pipeline to a streaming speech-to-text service.
-- Show partial transcripts in the live session screen.
+- Use browser speech recognition as the default local path.
+- Keep optional backend transcription for development.
+- Show transcript lines in the live session screen.
 - Track transcript timestamps.
 - Add error handling for dropped audio, network failures, and unclear speech.
-- Add basic speaker labeling if the provider supports it.
-- Store temporary transcript chunks for the active session.
+- Store temporary transcript chunks for the active session only.
 
 Deliverable:
 
-- The app can listen during a session and produce a near-real-time transcript.
+- The local app can listen during a session and produce a near-real-time transcript.
 
 Current status:
 
@@ -96,37 +102,45 @@ Current status:
 - The frontend can record short audio chunks with `MediaRecorder` and send them to `/api/transcribe`.
 - The app checks backend readiness and falls back to browser speech recognition when backend transcription is unavailable.
 
-## Phase 4: Agent Interaction Layer
+## Phase 4: Strategy Coach Interaction Layer
 
-Goal: let the user set a goal and have the agent respond to live context.
+Goal: let the user set an objective and have the coach evaluate live context.
 
 Steps:
 
-- Create a conversation goal setup form.
-- Send the user's goal, relevant context, and transcript chunks to the agent backend.
-- Build the first agent loop:
-  - Read the current goal.
+- Send the user's objective, relevant context, and recent transcript chunks to the local backend.
+- Build the active coaching loop:
+  - Read the current objective.
   - Read recent transcript context.
   - Identify the conversation state.
-  - Decide whether a suggestion is needed.
-  - Return a short suggestion.
+  - Decide whether advice is needed.
+  - Return either a short suggestion or silence.
 - Add suggestion types:
-  - Opening line
+  - Opening frame
   - Clarifying question
   - Objection response
+  - Reframe
   - Closing ask
   - Follow-up reminder
-- Add guardrails so the agent refuses manipulative, deceptive, or unsafe coaching.
+- Add strategy lenses:
+  - Strategic awareness
+  - Positioning
+  - Negotiation
+  - Human nature
+  - Execution
+  - Focus
+- Add guardrails against deceptive, coercive, or unsafe coaching.
 
 Deliverable:
 
-- The user can set a goal and receive live text suggestions based on the conversation transcript.
+- The user can set an objective and receive live suggestions based on the conversation transcript while active coaching is on.
 
 Current status:
 
-- Node backend agent route added at `/api/coach`.
+- Node backend route exists at `/api/coach`.
 - The backend uses the OpenAI Responses API when `OPENAI_API_KEY` is configured.
-- The browser client sends recent transcript context only when the wake word is detected.
+- The backend prompt should be updated for the new strategic coach behavior.
+- The frontend should send transcript context while active coaching is on, not only when the wake word appears.
 
 ## Phase 5: Conversation Coaching MVP
 
@@ -137,125 +151,63 @@ Steps:
 - Add a compact live coaching screen.
 - Show only the most recent useful suggestion.
 - Add controls to accept, dismiss, or regenerate a suggestion.
-- Add a cooldown so the agent does not interrupt too often.
-- Track whether the conversation is opening, exploring, handling objections, or closing.
-- Generate a post-conversation summary.
-- Turn agreed next steps into tasks.
+- Add a cooldown so the coach does not interrupt too often.
+- Track whether the conversation is opening, exploring, handling objections, reframing, closing, reached, or blocked.
+- Generate a post-conversation review.
+- Turn agreed next steps into follow-ups.
 
 Deliverable:
 
-- A working MVP where a user can prepare for a conversation, receive live guidance, and review follow-ups afterward.
+- A working local MVP where a user can prepare for a conversation, activate coaching, receive guidance, and review follow-ups.
 
-## Phase 6: AirPods And Bluetooth Earbud Integration
+## Phase 6: Spoken Feedback
 
-Goal: route audio input and assistant output through AirPods or another connected Bluetooth device.
-
-Steps:
-
-- Detect connected Bluetooth audio devices.
-- Use the mobile platform audio session APIs to prefer headset microphone input when available.
-- Route assistant audio output to the connected earbuds.
-- Handle device changes, such as AirPods connecting, disconnecting, or switching microphones.
-- Test with:
-  - AirPods
-  - AirPods Pro
-  - Wired earbuds
-  - Phone microphone fallback
-- Add UI that shows the active input and output device.
-- Add a quick fallback when earbud audio quality is too low.
-
-Deliverable:
-
-- The app can use AirPods or supported earbuds for user speech input and private assistant output.
-
-Recommended path:
-
-- Keep the browser prototype focused on the agent loop first.
-- Add mobile or native iOS only after the backend agent and wake-word flow are stable.
-- Use native audio session APIs to prefer headset microphone input and route assistant speech to connected earbuds.
-
-## Phase 7: Spoken Assistant Feedback
-
-Goal: move from visual-only suggestions to private in-ear guidance.
+Goal: move from visual-only suggestions to optional local spoken guidance.
 
 Steps:
 
-- Add text-to-speech for assistant suggestions.
+- Add browser text-to-speech for assistant suggestions.
 - Keep spoken suggestions short enough to understand during a live conversation.
 - Add voice settings:
   - Spoken suggestions on or off
   - Volume
   - Speaking rate
   - Suggestion frequency
-- Add a subtle sound or haptic cue before suggestions if useful.
 - Add interruption rules so EarBud does not speak over important moments.
 
 Deliverable:
 
-- EarBud can privately speak short suggestions into the user's earbuds.
+- EarBud can optionally speak short suggestions through the user's current audio output device.
 
-## Phase 8: Daily Task Assistant
+## Phase 7: Privacy, Safety, And Local Hardening
 
-Goal: expand beyond conversations into day-long task support.
-
-Steps:
-
-- Let the user enter daily priorities.
-- Convert goals into next actions.
-- Let the agent recommend what to do next.
-- Add reminders for follow-ups captured from conversations.
-- Add check-ins when tasks are delayed or completed.
-- Add a daily review summary.
-
-Deliverable:
-
-- EarBud helps the user move through the day, not only through individual conversations.
-
-## Phase 9: Memory And Personalization
-
-Goal: remember user-approved context that improves future guidance.
-
-Steps:
-
-- Add user-approved memory for preferences, recurring goals, important contacts, and communication style.
-- Separate temporary session context from long-term memory.
-- Let the user inspect, edit, and delete saved memory.
-- Use memory to personalize suggestions.
-- Avoid saving sensitive conversation details without explicit approval.
-
-Deliverable:
-
-- The assistant becomes more helpful over time while keeping the user in control.
-
-## Phase 10: Privacy, Safety, And Production Readiness
-
-Goal: prepare the product for real-world use.
+Goal: make local use clear, controlled, and safer.
 
 Steps:
 
 - Add clear consent and recording disclosures.
-- Add region-aware reminders for audio recording laws.
-- Add account deletion and data export.
-- Encrypt sensitive data in transit and at rest.
+- Add a visible active coaching indicator.
+- Add a fast stop control.
+- Avoid storing raw audio by default.
 - Redact sensitive transcript content from logs.
-- Add monitoring for latency, transcription failures, and agent failures.
-- Add automated tests for session lifecycle, data deletion, and safety rules.
+- Add deletion controls for local session data.
+- Add automated tests for session lifecycle, activation toggling, and safety rules.
 - Run real-world testing in quiet, noisy, indoor, and outdoor environments.
 
 Deliverable:
 
-- A production-ready version with privacy controls, safety boundaries, reliable audio behavior, and usable live agent interaction.
+- A local prototype with clear listening controls, ethical coaching boundaries, and reliable session behavior.
 
-## Full Implementation Milestone
+## Full Local MVP Milestone
 
-EarBud reaches full implementation when a user can:
+EarBud reaches the local MVP milestone when a user can:
 
-- Connect AirPods or another supported earbud device.
+- Open the app locally in a browser.
 - Start a conversation coaching session.
-- Tell the agent who they are talking to and what outcome they want.
-- Have the app listen with clear consent and recording controls.
-- Receive short private suggestions through the earbuds.
-- End the session at any time.
-- Review a summary and next steps.
-- Choose what to save, edit, or delete.
-- Use saved tasks and preferences to guide the rest of their day.
+- Tell the coach who they are talking to and what outcome they want.
+- Say the wake word/codeword to activate coaching.
+- Have the app listen with clear indicators.
+- Receive short strategic suggestions only when useful.
+- Say the codeword again or click stop to turn active coaching off.
+- Review follow-ups.
+- Delete local session data.
