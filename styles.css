@@ -66,6 +66,10 @@ button:disabled {
   min-height: 420px;
 }
 
+.voice-panel {
+  min-height: 260px;
+}
+
 .summary-panel {
   grid-column: span 2;
 }
@@ -129,7 +133,8 @@ h2 {
 }
 
 .goal-form,
-.manual-entry {
+.manual-entry,
+.voice-controls {
   display: grid;
   gap: 14px;
 }
@@ -161,6 +166,15 @@ textarea {
   color: var(--ink);
   padding: 11px 12px;
   outline: none;
+}
+
+input[type="checkbox"],
+input[type="range"] {
+  width: auto;
+}
+
+input[type="range"] {
+  accent-color: var(--teal);
 }
 
 textarea {
@@ -261,6 +275,18 @@ textarea:focus {
   margin-bottom: 16px;
 }
 
+.voice-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 16px 0 0;
+}
+
+.toggle-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-content: start;
+  color: var(--ink);
+}
+
 .transcript-list {
   min-height: 272px;
   max-height: 420px;
@@ -270,6 +296,21 @@ textarea:focus {
   list-style: none;
   display: grid;
   gap: 10px;
+}
+
+.live-transcript-wrap {
+  margin-bottom: 14px;
+}
+
+.live-transcript {
+  min-height: 68px;
+  border: 1px solid #acd8c8;
+  border-radius: 8px;
+  background: var(--mint);
+  color: var(--teal-dark);
+  padding: 12px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
 .transcript-list li {

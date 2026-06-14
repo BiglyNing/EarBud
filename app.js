@@ -1,4 +1,6 @@
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
+const speechSynthesis = window.speechSynthesis;
 
 const state = {
   active: false,
@@ -13,6 +15,7 @@ const state = {
   phase: "Setup",
   conversationState: "Setup",
   transcript: [],
+  liveTranscript: "Start a session, allow microphone access, then speak. Live words show here.",
   followUps: [],
   acceptedSuggestions: [],
   dismissedSuggestions: [],
@@ -20,6 +23,12 @@ const state = {
   lastAction: "None",
   lastSuggestion: "Set an objective to begin.",
   currentSuggestion: "",
+  spokenSuggestions: false,
+  speechFrequency: "important",
+  speechVolume: 0.7,
+  speechRate: 0.95,
+  speechSpeaking: false,
+  lastSpokenSuggestion: "",
   recognition: null,
   shouldRestartRecognition: false,
   health: null,
@@ -48,9 +57,17 @@ const elements = {
   manualTranscript: document.querySelector("#manualTranscript"),
   addLineButton: document.querySelector("#addLineButton"),
   transcriptList: document.querySelector("#transcriptList"),
+  liveTranscript: document.querySelector("#liveTranscript"),
   sessionStatus: document.querySelector("#sessionStatus"),
   reviewBox: document.querySelector("#reviewBox"),
-  followupList: document.querySelector("#followupList")
+  followupList: document.querySelector("#followupList"),
+  voiceStatus: document.querySelector("#voiceStatus"),
+  spokenSuggestionsInput: document.querySelector("#spokenSuggestionsInput"),
+  speechFrequencyInput: document.querySelector("#speechFrequencyInput"),
+  speechVolumeInput: document.querySelector("#speechVolumeInput"),
+  speechRateInput: document.querySelector("#speechRateInput"),
+  testVoiceButton: document.querySelector("#testVoiceButton"),
+  stopVoiceButton: document.querySelector("#stopVoiceButton")
 };
 
 function render() {
@@ -69,6 +86,7 @@ function render() {
   elements.conversationState.textContent = state.conversationState;
   elements.lastAction.textContent = state.lastAction;
   elements.reviewBox.textContent = state.review;
+  elements.liveTranscript.textContent = state.liveTranscript;
   elements.sessionStatus.textContent = state.active
     ? state.paused
       ? "Paused"
@@ -86,6 +104,7 @@ function render() {
   elements.deleteButton.disabled = !state.active && state.transcript.length === 0 && state.followUps.length === 0 && !state.currentSuggestion;
   elements.addLineButton.disabled = !state.active || state.paused;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
+  renderVoiceControls();
   renderBackendStatus();
 
   elements.transcriptList.innerHTML = "";
@@ -112,6 +131,24 @@ function render() {
   }
 }
 
+function renderVoiceControls() {
+  const supported = Boolean(SpeechSynthesisUtterance && speechSynthesis);
+  elements.spokenSuggestionsInput.disabled = !supported;
+  elements.speechFrequencyInput.disabled = !supported || !state.spokenSuggestions;
+  elements.speechVolumeInput.disabled = !supported || !state.spokenSuggestions;
+  elements.speechRateInput.disabled = !supported || !state.spokenSuggestions;
+  elements.testVoiceButton.disabled = !supported;
+  elements.stopVoiceButton.disabled = !supported || !state.speechSpeaking;
+  elements.voiceStatus.textContent = !supported
+    ? "Unavailable"
+    : state.speechSpeaking
+      ? "Speaking"
+      : state.spokenSuggestions
+        ? "On"
+        : "Off";
+  elements.voiceStatus.classList.toggle("active", supported && state.spokenSuggestions);
+}
+
 function startSession(event) {
   event.preventDefault();
 
@@ -126,6 +163,7 @@ function startSession(event) {
   state.phase = "Listening";
   state.conversationState = "Listening";
   state.transcript = [];
+  state.liveTranscript = "Listening for speech...";
   state.followUps = [];
   state.acceptedSuggestions = [];
   state.dismissedSuggestions = [];
@@ -172,6 +210,7 @@ function normalizeWakeWord(value) {
 function addTranscriptLine(text) {
   const cleanText = text.trim();
   if (!cleanText || !state.active || state.paused) return;
+  state.liveTranscript = `Final: ${cleanText}`;
 
   const codeword = containsWakeWord(cleanText);
   const line = {
@@ -266,6 +305,7 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
     state.currentSuggestion = payload.shouldChimeIn === false ? "" : state.lastSuggestion;
     state.lastAction = payload.shouldChimeIn === false ? "Coach stayed quiet" : "Coach suggested a move";
     addFollowUp(payload.followUp);
+    speakSuggestionIfNeeded(payload);
   } catch (error) {
     state.phase = "Agent Offline";
     state.conversationState = "Offline";
@@ -275,6 +315,78 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
     state.requestingAgent = false;
     render();
   }
+}
+
+function speakSuggestionIfNeeded(payload) {
+  if (!state.spokenSuggestions || payload.shouldChimeIn === false || !state.currentSuggestion) return;
+  if (state.speechFrequency === "important" && !isImportantSuggestion(payload)) return;
+  speakText(state.currentSuggestion);
+}
+
+function isImportantSuggestion(payload) {
+  const stateName = String(payload.state || payload.phase || "").toLowerCase();
+  return [
+    "objection",
+    "reframe",
+    "ask",
+    "closing",
+    "blocked",
+    "boundary"
+  ].some((keyword) => stateName.includes(keyword));
+}
+
+function speakText(text) {
+  if (!SpeechSynthesisUtterance || !speechSynthesis || !text) return;
+  if (state.lastSpokenSuggestion === text && speechSynthesis.speaking) return;
+
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.volume = state.speechVolume;
+  utterance.rate = state.speechRate;
+  utterance.pitch = 1;
+  utterance.onstart = () => {
+    state.speechSpeaking = true;
+    state.lastSpokenSuggestion = text;
+    render();
+  };
+  utterance.onend = () => {
+    state.speechSpeaking = false;
+    render();
+  };
+  utterance.onerror = () => {
+    state.speechSpeaking = false;
+    render();
+  };
+  speechSynthesis.speak(utterance);
+}
+
+function stopSpeaking() {
+  if (speechSynthesis) {
+    speechSynthesis.cancel();
+  }
+  state.speechSpeaking = false;
+  render();
+}
+
+function toggleSpokenSuggestions() {
+  state.spokenSuggestions = elements.spokenSuggestionsInput.checked;
+  state.lastAction = state.spokenSuggestions ? "Voice enabled" : "Voice disabled";
+  if (!state.spokenSuggestions) {
+    stopSpeaking();
+    return;
+  }
+  render();
+}
+
+function updateSpeechSettings() {
+  state.speechFrequency = elements.speechFrequencyInput.value;
+  state.speechVolume = Number(elements.speechVolumeInput.value);
+  state.speechRate = Number(elements.speechRateInput.value);
+  render();
+}
+
+function testVoice() {
+  speakText("Spoken suggestions are ready.");
 }
 
 function addFollowUp(text) {
@@ -323,15 +435,26 @@ function setupRecognition() {
   state.recognition.onstart = () => {
     finalText = "";
     state.listening = true;
+    state.liveTranscript = "Listening for speech...";
     render();
   };
 
   state.recognition.onresult = (event) => {
+    let interimText = "";
+
     for (let index = event.resultIndex; index < event.results.length; index += 1) {
       const result = event.results[index];
       if (result.isFinal) {
         finalText += `${result[0].transcript} `;
+      } else {
+        interimText += `${result[0].transcript} `;
       }
+    }
+
+    const cleanInterim = interimText.trim();
+    if (cleanInterim) {
+      state.liveTranscript = `Hearing: ${cleanInterim}`;
+      render();
     }
 
     const cleanFinal = finalText.trim();
@@ -345,6 +468,7 @@ function setupRecognition() {
     state.listening = false;
     if (state.active && !state.paused) {
       state.lastSuggestion = "Speech recognition paused. Typed transcript input still works.";
+      state.liveTranscript = "Speech recognition paused.";
     }
     render();
   };
@@ -389,6 +513,7 @@ function togglePause() {
     state.currentSuggestion = "";
     state.lastAction = "Paused";
     state.lastSuggestion = "Session paused.";
+    stopSpeaking();
   } else {
     state.conversationState = "Listening";
     state.lastAction = "Resumed";
@@ -406,9 +531,11 @@ function regenerateSuggestion() {
 
 function endSession() {
   stopAllListening();
+  stopSpeaking();
   state.active = false;
   state.paused = false;
   state.listening = false;
+  state.liveTranscript = "Session ended.";
   state.coachingActive = false;
   state.phase = "Review";
   state.conversationState = "Review";
@@ -443,6 +570,7 @@ function generateLocalReview() {
 
 function deleteSessionData() {
   stopAllListening();
+  stopSpeaking();
   state.active = false;
   state.paused = false;
   state.coachingActive = false;
@@ -454,6 +582,7 @@ function deleteSessionData() {
   state.phase = "Setup";
   state.conversationState = "Setup";
   state.transcript = [];
+  state.liveTranscript = "Local session data deleted.";
   state.followUps = [];
   state.acceptedSuggestions = [];
   state.dismissedSuggestions = [];
@@ -481,6 +610,12 @@ elements.dismissButton.addEventListener("click", dismissSuggestion);
 elements.regenerateButton.addEventListener("click", regenerateSuggestion);
 elements.endButton.addEventListener("click", endSession);
 elements.deleteButton.addEventListener("click", deleteSessionData);
+elements.spokenSuggestionsInput.addEventListener("change", toggleSpokenSuggestions);
+elements.speechFrequencyInput.addEventListener("change", updateSpeechSettings);
+elements.speechVolumeInput.addEventListener("input", updateSpeechSettings);
+elements.speechRateInput.addEventListener("input", updateSpeechSettings);
+elements.testVoiceButton.addEventListener("click", testVoice);
+elements.stopVoiceButton.addEventListener("click", stopSpeaking);
 
 setupRecognition();
 fetchHealth();

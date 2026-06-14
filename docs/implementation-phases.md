@@ -135,7 +135,7 @@ Deliverable:
 Current status:
 
 - Node backend route exists at `/api/coach`.
-- The backend uses the OpenAI Responses API when `OPENAI_API_KEY` is configured.
+- The backend uses the Gemini API when `GEMINI_API_KEY` is configured.
 - The backend prompt uses the new strategic coach behavior.
 - The frontend sends transcript context while active coaching is on.
 - The backend returns structured phase, state, chime-in, suggestion, and follow-up fields.
@@ -185,6 +185,14 @@ Steps:
 Deliverable:
 
 - EarBud can optionally speak short suggestions through the user's current audio output device.
+
+Current status:
+
+- Browser speech synthesis can speak suggestions locally when enabled.
+- Voice controls include on/off, volume, speaking rate, and suggestion frequency.
+- A test button and stop-voice control are available.
+- EarBud only speaks model chime-ins, not every status message.
+- Speech stops on pause, end, and delete.
 
 ## Phase 7: Privacy, Safety, And Local Hardening
 

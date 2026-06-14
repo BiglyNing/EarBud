@@ -44,10 +44,10 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 
 ## Phase 6: Optional Spoken Suggestions
 
-- Add browser text-to-speech for suggestions.
-- Add voice controls.
-- Add interruption rules.
-- Test whether spoken guidance helps or distracts during real conversations.
+- Add browser text-to-speech for suggestions. Status: complete.
+- Add voice controls. Status: complete.
+- Add interruption rules. Status: complete in local form.
+- Test whether spoken guidance helps or distracts during real conversations. Status: pending real-world testing.
 
 ## Phase 7: Trust And Safety
 
@@ -64,4 +64,4 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 - What cooldown prevents distraction without missing important openings?
 - How should EarBud handle multiple speakers in the transcript?
 - What is the best first user segment?
-- Should the default model provider be OpenAI, Gemini, or configurable?
+- Should Gemini stay the default model provider, or should providers be configurable later?

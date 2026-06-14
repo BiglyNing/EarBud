@@ -91,6 +91,7 @@ This repo includes a browser-based prototype and a Node backend agent:
 - Backend coaching suggestions.
 - Codeword toggled active coaching.
 - Accept, dismiss, evaluate, end, and delete controls.
+- Optional browser-spoken suggestions with local voice controls.
 - Local post-session review.
 - Session follow-ups and review state.
 
@@ -104,7 +105,13 @@ Install dependencies:
 npm install
 ```
 
-Create a `.env` file using [.env.example](.env.example), then set `OPENAI_API_KEY`.
+Create a `.env` file using [.env.example](.env.example), then set `GEMINI_API_KEY`.
+
+You can create a Gemini API key in Google AI Studio:
+
+```text
+https://aistudio.google.com/apikey
+```
 
 Run it with:
 
@@ -119,6 +126,8 @@ http://localhost:3000
 ```
 
 The app is intended to run locally on your machine. Do not expose the local server publicly unless you have added proper authentication, consent flows, and production security controls.
+
+Gemini's free tier is enough for local testing, but it is rate-limited and Google may use free-tier inputs to improve its products. Check the current Gemini pricing and billing docs before using sensitive data or sharing the app with other users.
 
 ## Important Privacy Note
 

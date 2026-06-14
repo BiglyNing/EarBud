@@ -107,7 +107,7 @@ The default should be short and non-disruptive.
 - UI: vanilla HTML, CSS, and browser JavaScript.
 - Server: local Node.js and Express.
 - Transcription: browser speech recognition or typed transcript input.
-- Agent backend: OpenAI Responses API when `OPENAI_API_KEY` is configured.
+- Agent backend: Gemini API when `GEMINI_API_KEY` is configured.
 - Storage: in-memory browser state for the active session.
 
 ## Engineering Priorities
@@ -117,4 +117,4 @@ The default should be short and non-disruptive.
 - Make the agent decide when silence is better than advice.
 - Keep suggestions short enough for live use.
 - Minimize transcript storage.
-- Keep the system easy to swap from OpenAI to another model provider later.
+- Keep the system easy to swap to another model provider later.

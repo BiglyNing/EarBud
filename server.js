@@ -1,11 +1,11 @@
 import "dotenv/config";
 import express from "express";
-import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
-const model = process.env.OPENAI_MODEL || "gpt-5.5";
-const client = process.env.OPENAI_API_KEY ? new OpenAI() : null;
+const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
@@ -21,7 +21,7 @@ app.get("/api/health", (_req, res) => {
 app.post("/api/coach", async (req, res) => {
   if (!client) {
     res.status(503).json({
-      error: "OPENAI_API_KEY is not set. Add it to your environment or .env file to enable the backend agent."
+      error: "GEMINI_API_KEY is not set. Add it to your environment or .env file to enable the backend agent."
     });
     return;
   }
@@ -49,24 +49,9 @@ app.post("/api/coach", async (req, res) => {
   }
 
   try {
-    const response = await client.responses.create({
+    const response = await client.models.generateContent({
       model,
-      reasoning: { effort: "low" },
-      instructions: [
-        "You are EarBud, a private in-ear conversation coach.",
-        "The user is in a live conversation and wants to complete a specific objective.",
-        "Use strategic awareness, positioning, negotiation, human-nature reading, execution, and focus.",
-        "Do not quote or imitate any source text. Synthesize original practical advice.",
-        "Only chime in when advice is useful; otherwise say to keep listening.",
-        "Return only valid JSON with keys: phase, state, shouldChimeIn, suggestion, followUp.",
-        "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
-        "shouldChimeIn must be a boolean.",
-        "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
-        "The followUp value must be null unless there is a concrete next step to remember.",
-        "Do not suggest deception, coercion, manipulation, harassment, or false claims.",
-        "If the user's objective is unsafe, return state Boundary and redirect to honest, consent-aware communication."
-      ].join("\n"),
-      input: [
+      contents: [
         `Conversation partner: ${partner || "unknown"}`,
         `User objective: ${goal || "move the conversation toward a clear next step"}`,
         `Desired tone: ${tone || "calm"}`,
@@ -77,10 +62,38 @@ app.post("/api/coach", async (req, res) => {
         "Latest transcript line:",
         latestLine,
         "Decide whether to chime in now. If useful, generate the next strategic move."
-      ].join("\n\n")
+      ].join("\n\n"),
+      config: {
+        systemInstruction: [
+          "You are EarBud, a private conversation coach.",
+          "The user is in a live conversation and wants to complete a specific objective.",
+          "Use strategic awareness, positioning, negotiation, human-nature reading, execution, and focus.",
+          "Do not quote or imitate any source text. Synthesize original practical advice.",
+          "Only chime in when advice is useful; otherwise say to keep listening.",
+          "Return structured JSON with keys: phase, state, shouldChimeIn, suggestion, followUp.",
+          "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
+          "shouldChimeIn must be a boolean.",
+          "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
+          "The followUp value must be null unless there is a concrete next step to remember.",
+          "Do not suggest deception, coercion, manipulation, harassment, or false claims.",
+          "If the user's objective is unsafe, return state Boundary and redirect to honest, consent-aware communication."
+        ].join("\n"),
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            phase: { type: Type.STRING },
+            state: { type: Type.STRING },
+            shouldChimeIn: { type: Type.BOOLEAN },
+            suggestion: { type: Type.STRING },
+            followUp: { type: Type.STRING, nullable: true }
+          },
+          required: ["phase", "state", "shouldChimeIn", "suggestion", "followUp"]
+        }
+      }
     });
 
-    const payload = parseAgentJson(response.output_text);
+    const payload = parseAgentJson(response.text);
     res.json(payload);
   } catch (error) {
     console.error("Agent request failed:", error);
@@ -140,5 +153,5 @@ function parseAgentJson(text) {
 
 app.listen(port, () => {
   console.log(`EarBud running at http://localhost:${port}`);
-  console.log(client ? `Conversation coach enabled with ${model}` : "Conversation coach disabled: OPENAI_API_KEY is not set.");
+  console.log(client ? `Gemini conversation coach enabled with ${model}` : "Gemini conversation coach disabled: GEMINI_API_KEY is not set.");
 });

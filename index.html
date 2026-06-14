@@ -84,6 +84,43 @@
         <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
       </section>
 
+      <section class="panel voice-panel" aria-labelledby="voice-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Local Audio</p>
+            <h2 id="voice-title">Spoken Suggestions</h2>
+          </div>
+          <div class="status-dot" id="voiceStatus">Off</div>
+        </div>
+
+        <div class="voice-controls">
+          <label class="toggle-row">
+            <input id="spokenSuggestionsInput" type="checkbox">
+            Spoken suggestions
+          </label>
+          <label>
+            Frequency
+            <select id="speechFrequencyInput">
+              <option value="important">Important only</option>
+              <option value="all">Every suggestion</option>
+            </select>
+          </label>
+          <label>
+            Volume
+            <input id="speechVolumeInput" type="range" min="0" max="1" step="0.1" value="0.7">
+          </label>
+          <label>
+            Speed
+            <input id="speechRateInput" type="range" min="0.75" max="1.25" step="0.05" value="0.95">
+          </label>
+        </div>
+
+        <div class="control-grid voice-actions">
+          <button id="testVoiceButton" class="control-button" type="button">Test</button>
+          <button id="stopVoiceButton" class="control-button danger" type="button" disabled>Stop Voice</button>
+        </div>
+      </section>
+
       <section class="panel transcript-panel" aria-labelledby="transcript-title">
         <div class="panel-header">
           <div>
@@ -91,6 +128,12 @@
             <h2 id="transcript-title">Transcript</h2>
           </div>
           <div class="status-dot" id="sessionStatus">Inactive</div>
+        </div>
+        <div class="live-transcript-wrap" aria-live="polite">
+          <span class="meta-label">Live Browser Transcription</span>
+          <div class="live-transcript" id="liveTranscript">
+            Start a session, allow microphone access, then speak. Live words show here.
+          </div>
         </div>
         <ol class="transcript-list" id="transcriptList"></ol>
       </section>
