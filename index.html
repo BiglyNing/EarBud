@@ -11,8 +11,8 @@
       <section class="panel session-panel" aria-labelledby="session-title">
         <div class="brand-row">
           <div>
-            <p class="eyebrow">EarBud Phase 2</p>
-            <h1 id="session-title">Live Coaching Prototype</h1>
+            <p class="eyebrow">Local Prototype</p>
+            <h1 id="session-title">Conversation Objective Coach</h1>
           </div>
           <div class="device-pill" id="deviceState">Mic standby</div>
         </div>
@@ -23,8 +23,8 @@
             <input id="partnerInput" type="text" placeholder="Jordan" autocomplete="off">
           </label>
           <label>
-            Outcome
-            <textarea id="goalInput" rows="4" placeholder="Ask for a project deadline extension while staying confident."></textarea>
+            Objective
+            <textarea id="goalInput" rows="4" placeholder="Get agreement on a project deadline extension while staying confident."></textarea>
           </label>
           <label>
             Tone
@@ -36,15 +36,8 @@
             </select>
           </label>
           <label>
-            Wake word
+            Codeword
             <input id="wakeWordInput" type="text" value="earbud" autocomplete="off">
-          </label>
-          <label>
-            Transcription
-            <select id="transcriptionModeInput">
-              <option value="browser">Browser speech recognition</option>
-              <option value="backend">Backend audio transcription</option>
-            </select>
           </label>
           <p class="helper-text" id="backendStatus">Checking backend...</p>
           <button class="primary-action" type="submit">Start Session</button>
@@ -54,8 +47,8 @@
       <section class="panel coach-panel" aria-labelledby="coach-title">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Agent</p>
-            <h2 id="coach-title">Next Move</h2>
+            <p class="eyebrow">Coach</p>
+            <h2 id="coach-title">Strategic Move</h2>
           </div>
           <div class="phase-chip" id="phaseChip">Setup</div>
         </div>
@@ -64,15 +57,29 @@
           Set a goal to begin.
         </div>
 
+        <div class="coach-meta">
+          <div>
+            <span class="meta-label">State</span>
+            <strong id="conversationState">Setup</strong>
+          </div>
+          <div>
+            <span class="meta-label">Last action</span>
+            <strong id="lastAction">None</strong>
+          </div>
+        </div>
+
         <div class="control-grid">
           <button id="pauseButton" class="control-button" type="button" disabled>Pause</button>
-          <button id="regenerateButton" class="control-button" type="button" disabled>Regenerate</button>
+          <button id="acceptButton" class="control-button" type="button" disabled>Accept</button>
+          <button id="dismissButton" class="control-button" type="button" disabled>Dismiss</button>
+          <button id="regenerateButton" class="control-button" type="button" disabled>Evaluate</button>
           <button id="endButton" class="control-button danger" type="button" disabled>End</button>
+          <button id="deleteButton" class="control-button danger" type="button" disabled>Delete</button>
         </div>
 
         <label class="manual-entry">
           Transcript input
-          <textarea id="manualTranscript" rows="3" placeholder="Type a line. Include the wake word when you want the agent to answer."></textarea>
+          <textarea id="manualTranscript" rows="3" placeholder="Type a line. Use the codeword to toggle active coaching on or off."></textarea>
         </label>
         <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
       </section>
@@ -92,8 +99,11 @@
         <div class="panel-header">
           <div>
             <p class="eyebrow">Review</p>
-            <h2 id="summary-title">Follow-Ups</h2>
+            <h2 id="summary-title">Conversation Review</h2>
           </div>
+        </div>
+        <div class="review-box" id="reviewBox">
+          End a session to generate a local review.
         </div>
         <ul class="followup-list" id="followupList">
           <li>No follow-ups yet.</li>

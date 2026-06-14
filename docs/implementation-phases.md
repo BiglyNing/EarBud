@@ -51,7 +51,7 @@ Deliverable:
 Current status:
 
 - Conversation setup, live suggestion, transcript, and review UI exist.
-- The current implementation still treats the wake word as a single request trigger.
+- The codeword now toggles active coaching on and off.
 
 ## Phase 2: Audio Capture Prototype
 
@@ -74,9 +74,8 @@ Deliverable:
 Current status:
 
 - Browser prototype added with continuous speech recognition where supported.
-- Backend audio chunk transcription added at `/api/transcribe`.
 - Typed transcript fallback added for testing.
-- Wake-word behavior needs to be changed from one-shot requests to active coaching toggle.
+- Codeword behavior uses an active coaching toggle.
 
 ## Phase 3: Speech-To-Text Integration
 
@@ -85,7 +84,6 @@ Goal: convert live audio into text the coach can reason about.
 Steps:
 
 - Use browser speech recognition as the default local path.
-- Keep optional backend transcription for development.
 - Show transcript lines in the live session screen.
 - Track transcript timestamps.
 - Add error handling for dropped audio, network failures, and unclear speech.
@@ -98,9 +96,8 @@ Deliverable:
 Current status:
 
 - Browser speech recognition is available as the lowest-friction transcription path.
-- Backend chunk transcription is available when `OPENAI_API_KEY` is configured.
-- The frontend can record short audio chunks with `MediaRecorder` and send them to `/api/transcribe`.
-- The app checks backend readiness and falls back to browser speech recognition when backend transcription is unavailable.
+- Typed transcript input is available as a fallback.
+- Backend audio transcription was removed from the local-first prototype.
 
 ## Phase 4: Strategy Coach Interaction Layer
 
@@ -139,8 +136,10 @@ Current status:
 
 - Node backend route exists at `/api/coach`.
 - The backend uses the OpenAI Responses API when `OPENAI_API_KEY` is configured.
-- The backend prompt should be updated for the new strategic coach behavior.
-- The frontend should send transcript context while active coaching is on, not only when the wake word appears.
+- The backend prompt uses the new strategic coach behavior.
+- The frontend sends transcript context while active coaching is on.
+- The backend returns structured phase, state, chime-in, suggestion, and follow-up fields.
+- A basic local safety screen redirects obvious coercive or deceptive requests.
 
 ## Phase 5: Conversation Coaching MVP
 
@@ -159,6 +158,14 @@ Steps:
 Deliverable:
 
 - A working local MVP where a user can prepare for a conversation, activate coaching, receive guidance, and review follow-ups.
+
+Current status:
+
+- Accept, dismiss, evaluate, pause, end, and delete controls are available.
+- The UI tracks conversation state and the last user action.
+- Ending a session generates a local review.
+- Accepted suggestions can become follow-ups.
+- Local session data can be deleted from the UI.
 
 ## Phase 6: Spoken Feedback
 

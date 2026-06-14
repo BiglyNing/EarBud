@@ -5,7 +5,6 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 ## Phase 1: Product Foundation
 
 - Define the focused conversation coaching flow. Status: documented.
-- Reframe project away from general daily assistant behavior. Status: documented.
 - Set initial platform as local desktop/browser app. Status: documented.
 - Define privacy requirements. Status: documented.
 - Define strategic coaching lenses. Status: documented.
@@ -18,31 +17,30 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 - Show live suggestions in a basic UI. Status: complete.
 - Add typed transcript fallback. Status: complete.
 - Add browser speech recognition. Status: complete for supported browsers.
-- Add optional backend transcription. Status: complete with `/api/transcribe`.
 
 ## Phase 3: Activation Behavior
 
-- Replace one-shot wake-word requests with active coaching toggle. Status: pending.
-- Keep listening after the wake word/codeword is spoken. Status: pending.
-- Let the coach chime in when advice is useful. Status: pending.
-- Turn active coaching off when the codeword is spoken again. Status: pending.
-- Show active coaching state clearly in the UI. Status: pending.
+- Use the codeword as an active coaching toggle. Status: complete.
+- Keep listening after the wake word/codeword is spoken. Status: complete.
+- Let the coach chime in when advice is useful. Status: complete in basic cooldown form.
+- Turn active coaching off when the codeword is spoken again. Status: complete.
+- Show active coaching state clearly in the UI. Status: complete.
 
 ## Phase 4: Strategy Coach
 
-- Update the backend prompt for objective-completion coaching. Status: pending.
-- Add strategic lenses for negotiation, positioning, human behavior, execution, and focus. Status: pending.
-- Return structured state, suggestion, follow-up, and silence decisions. Status: pending.
-- Add a cooldown to prevent too many interruptions. Status: pending.
-- Improve safety evaluation for coercive or deceptive advice. Status: pending.
+- Update the backend prompt for objective-completion coaching. Status: complete.
+- Add strategic lenses for negotiation, positioning, human behavior, execution, and focus. Status: complete.
+- Return structured state, suggestion, and follow-up data. Status: complete.
+- Add a cooldown to prevent too many interruptions. Status: complete.
+- Improve safety evaluation for coercive or deceptive advice. Status: complete in basic local form.
 
 ## Phase 5: Conversation Coaching MVP
 
-- Add controls to accept, dismiss, or regenerate a suggestion.
-- Track conversation state across the session.
-- Generate a post-conversation review.
-- Turn agreed next steps into follow-ups.
-- Add local deletion controls.
+- Add controls to accept, dismiss, or regenerate a suggestion. Status: complete.
+- Track conversation state across the session. Status: complete.
+- Generate a post-conversation review. Status: complete in local summary form.
+- Turn agreed next steps into follow-ups. Status: complete.
+- Add local deletion controls. Status: complete.
 
 ## Phase 6: Optional Spoken Suggestions
 

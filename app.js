@@ -4,23 +4,27 @@ const state = {
   active: false,
   paused: false,
   listening: false,
+  coachingActive: false,
   requestingAgent: false,
   partner: "",
   goal: "",
   tone: "calm",
   wakeWord: "earbud",
-  transcriptionMode: "browser",
   phase: "Setup",
+  conversationState: "Setup",
   transcript: [],
   followUps: [],
-  lastSuggestion: "Set a goal to begin.",
+  acceptedSuggestions: [],
+  dismissedSuggestions: [],
+  review: "End a session to generate a local review.",
+  lastAction: "None",
+  lastSuggestion: "Set an objective to begin.",
+  currentSuggestion: "",
   recognition: null,
   shouldRestartRecognition: false,
-  mediaStream: null,
-  mediaRecorder: null,
-  transcribingAudio: false,
-  pendingAudioChunks: 0,
-  health: null
+  health: null,
+  lastCoachRequestAt: 0,
+  coachCooldownMs: 12000
 };
 
 const elements = {
@@ -29,44 +33,57 @@ const elements = {
   goalInput: document.querySelector("#goalInput"),
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
-  transcriptionModeInput: document.querySelector("#transcriptionModeInput"),
   backendStatus: document.querySelector("#backendStatus"),
   deviceState: document.querySelector("#deviceState"),
   phaseChip: document.querySelector("#phaseChip"),
   suggestionBox: document.querySelector("#suggestionBox"),
+  conversationState: document.querySelector("#conversationState"),
+  lastAction: document.querySelector("#lastAction"),
   pauseButton: document.querySelector("#pauseButton"),
+  acceptButton: document.querySelector("#acceptButton"),
+  dismissButton: document.querySelector("#dismissButton"),
   regenerateButton: document.querySelector("#regenerateButton"),
   endButton: document.querySelector("#endButton"),
+  deleteButton: document.querySelector("#deleteButton"),
   manualTranscript: document.querySelector("#manualTranscript"),
   addLineButton: document.querySelector("#addLineButton"),
   transcriptList: document.querySelector("#transcriptList"),
   sessionStatus: document.querySelector("#sessionStatus"),
+  reviewBox: document.querySelector("#reviewBox"),
   followupList: document.querySelector("#followupList")
 };
 
 function render() {
   elements.deviceState.textContent = state.listening
-    ? state.transcriptionMode === "backend"
-      ? "Recording chunks"
-      : "Always listening"
-    : state.transcriptionMode === "backend"
-      ? "Backend STT"
-      : SpeechRecognition
-        ? "Mic standby"
-        : "Typed mode";
+    ? "Listening"
+    : SpeechRecognition
+      ? "Mic standby"
+      : "Typed mode";
 
   elements.phaseChip.textContent = state.requestingAgent
     ? "Thinking"
-    : state.transcribingAudio
-      ? "Transcribing"
+    : state.coachingActive
+      ? "Coaching On"
       : state.phase;
   elements.suggestionBox.textContent = state.lastSuggestion;
-  elements.sessionStatus.textContent = state.active ? (state.paused ? "Paused" : "Active") : "Inactive";
-  elements.sessionStatus.classList.toggle("active", state.active && !state.paused);
+  elements.conversationState.textContent = state.conversationState;
+  elements.lastAction.textContent = state.lastAction;
+  elements.reviewBox.textContent = state.review;
+  elements.sessionStatus.textContent = state.active
+    ? state.paused
+      ? "Paused"
+      : state.coachingActive
+        ? "Coaching"
+        : "Listening"
+    : "Inactive";
+  elements.sessionStatus.classList.toggle("active", state.active && !state.paused && state.coachingActive);
 
   elements.pauseButton.disabled = !state.active;
-  elements.regenerateButton.disabled = !state.active || state.requestingAgent || !findLastWakeLine();
+  elements.acceptButton.disabled = !state.active || !state.currentSuggestion || state.requestingAgent;
+  elements.dismissButton.disabled = !state.active || !state.currentSuggestion || state.requestingAgent;
+  elements.regenerateButton.disabled = !state.active || !state.coachingActive || state.requestingAgent || state.transcript.length === 0;
   elements.endButton.disabled = !state.active;
+  elements.deleteButton.disabled = !state.active && state.transcript.length === 0 && state.followUps.length === 0 && !state.currentSuggestion;
   elements.addLineButton.disabled = !state.active || state.paused;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
   renderBackendStatus();
@@ -76,7 +93,7 @@ function render() {
     const item = document.createElement("li");
     const meta = document.createElement("span");
     meta.className = "line-meta";
-    meta.textContent = `Line ${index + 1} - ${line.time}${line.triggeredAgent ? " - agent asked" : ""}`;
+    meta.textContent = `Line ${index + 1} - ${line.time}${line.codeword ? " - codeword" : ""}`;
     item.append(meta, document.createTextNode(line.text));
     elements.transcriptList.appendChild(item);
   });
@@ -102,23 +119,23 @@ function startSession(event) {
   state.goal = elements.goalInput.value.trim() || "move the conversation toward a clear next step";
   state.tone = elements.toneInput.value;
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
-  state.transcriptionMode = elements.transcriptionModeInput.value;
-  if (state.transcriptionMode === "backend" && state.health && !state.health.transcriptionReady) {
-    state.transcriptionMode = "browser";
-    elements.transcriptionModeInput.value = "browser";
-    state.lastSuggestion = "Backend transcription needs OPENAI_API_KEY. Falling back to browser speech recognition.";
-  }
   elements.wakeWordInput.value = state.wakeWord;
   state.active = true;
   state.paused = false;
+  state.coachingActive = false;
   state.phase = "Listening";
+  state.conversationState = "Listening";
   state.transcript = [];
   state.followUps = [];
-  if (!state.lastSuggestion.includes("OPENAI_API_KEY")) {
-    state.lastSuggestion = `Listening continuously. Say "${state.wakeWord}" when you want the agent to suggest what to say.`;
-  }
+  state.acceptedSuggestions = [];
+  state.dismissedSuggestions = [];
+  state.review = "Session in progress. End the session to generate a local review.";
+  state.lastAction = "Session started";
+  state.currentSuggestion = "";
+  state.lastCoachRequestAt = 0;
+  state.lastSuggestion = `Listening locally. Say "${state.wakeWord}" to turn active coaching on. Say it again to turn coaching off.`;
 
-  startListeningForMode();
+  startContinuousListening();
   render();
 }
 
@@ -128,9 +145,9 @@ function renderBackendStatus() {
     return;
   }
 
-  const agentStatus = state.health.agentReady ? "agent ready" : "agent needs API key";
-  const transcriptionStatus = state.health.transcriptionReady ? "backend transcription ready" : "backend transcription needs API key";
-  elements.backendStatus.textContent = `${agentStatus}; ${transcriptionStatus}.`;
+  elements.backendStatus.textContent = state.health.agentReady
+    ? `coach ready with ${state.health.model}`
+    : "coach needs OPENAI_API_KEY for model suggestions";
 }
 
 async function fetchHealth() {
@@ -140,8 +157,7 @@ async function fetchHealth() {
   } catch {
     state.health = {
       ok: false,
-      agentReady: false,
-      transcriptionReady: false
+      agentReady: false
     };
   } finally {
     render();
@@ -157,42 +173,68 @@ function addTranscriptLine(text) {
   const cleanText = text.trim();
   if (!cleanText || !state.active || state.paused) return;
 
-  const triggeredAgent = containsWakeWord(cleanText);
+  const codeword = containsWakeWord(cleanText);
   const line = {
     text: cleanText,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    triggeredAgent
+    codeword
   };
 
   state.transcript.push(line);
 
-  if (triggeredAgent) {
-    requestAgentSuggestion(line);
-  } else {
-    state.phase = "Listening";
-    state.lastSuggestion = `Heard and saved. I will stay quiet until you say "${state.wakeWord}".`;
-  }
-
-  render();
-}
-
-function startListeningForMode() {
-  if (state.transcriptionMode === "backend") {
-    startBackendRecording();
+  if (codeword) {
+    toggleCoaching();
     return;
   }
 
-  startContinuousListening();
+  if (state.coachingActive) {
+    maybeRequestAgentSuggestion(line);
+  } else {
+    state.phase = "Listening";
+    state.conversationState = "Listening";
+    state.currentSuggestion = "";
+    state.lastSuggestion = `Heard and saved. Say "${state.wakeWord}" when you want active coaching.`;
+  }
+
+  render();
 }
 
 function containsWakeWord(text) {
   return text.toLowerCase().includes(state.wakeWord.toLowerCase());
 }
 
-async function requestAgentSuggestion(line) {
+function toggleCoaching() {
+  state.coachingActive = !state.coachingActive;
+  state.phase = state.coachingActive ? "Active Coaching" : "Listening";
+  state.conversationState = state.phase;
+  state.lastAction = state.coachingActive ? "Coaching activated" : "Coaching stopped";
+  state.currentSuggestion = "";
+  state.lastSuggestion = state.coachingActive
+    ? `Active coaching on. I will chime in only when there is a useful move toward: ${state.goal}`
+    : "Active coaching off. I will keep the transcript but stay quiet.";
+  render();
+}
+
+function maybeRequestAgentSuggestion(line) {
+  const now = Date.now();
+  if (now - state.lastCoachRequestAt < state.coachCooldownMs) {
+    state.phase = "Listening";
+    state.conversationState = "Tracking";
+    state.currentSuggestion = "";
+    state.lastSuggestion = "Tracking the conversation. No new move yet.";
+    return;
+  }
+
+  requestAgentSuggestion(line);
+}
+
+async function requestAgentSuggestion(line = state.transcript[state.transcript.length - 1]) {
+  if (!line) return;
+
+  state.lastCoachRequestAt = Date.now();
   state.requestingAgent = true;
-  state.phase = "Agent Asked";
-  state.lastSuggestion = "Agent is thinking...";
+  state.phase = "Evaluating";
+  state.lastSuggestion = "Coach is evaluating the next useful move...";
   render();
 
   try {
@@ -207,7 +249,8 @@ async function requestAgentSuggestion(line) {
         tone: state.tone,
         wakeWord: state.wakeWord,
         latestLine: line.text,
-        transcript: state.transcript
+        transcript: state.transcript,
+        coachingActive: state.coachingActive
       })
     });
 
@@ -218,11 +261,16 @@ async function requestAgentSuggestion(line) {
     }
 
     state.phase = payload.phase || "Guiding";
-    state.lastSuggestion = payload.suggestion || "Ask one clear question that moves the conversation toward your goal.";
+    state.conversationState = payload.state || payload.phase || "Guiding";
+    state.lastSuggestion = payload.suggestion || "Stay quiet for now and keep listening for the next useful opening.";
+    state.currentSuggestion = payload.shouldChimeIn === false ? "" : state.lastSuggestion;
+    state.lastAction = payload.shouldChimeIn === false ? "Coach stayed quiet" : "Coach suggested a move";
     addFollowUp(payload.followUp);
   } catch (error) {
     state.phase = "Agent Offline";
-    state.lastSuggestion = error.message || "The backend agent is unavailable.";
+    state.conversationState = "Offline";
+    state.currentSuggestion = "";
+    state.lastSuggestion = error.message || "The coaching backend is unavailable.";
   } finally {
     state.requestingAgent = false;
     render();
@@ -233,6 +281,33 @@ function addFollowUp(text) {
   if (typeof text === "string" && text.trim() && !state.followUps.includes(text.trim())) {
     state.followUps.push(text.trim());
   }
+}
+
+function acceptSuggestion() {
+  if (!state.currentSuggestion) return;
+
+  state.acceptedSuggestions.push({
+    text: state.currentSuggestion,
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    state: state.conversationState
+  });
+  state.lastAction = "Suggestion accepted";
+  addFollowUp(`Use accepted move: ${state.currentSuggestion}`);
+  render();
+}
+
+function dismissSuggestion() {
+  if (!state.currentSuggestion) return;
+
+  state.dismissedSuggestions.push({
+    text: state.currentSuggestion,
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    state: state.conversationState
+  });
+  state.currentSuggestion = "";
+  state.lastSuggestion = "Suggestion dismissed. I will keep listening for a better opening.";
+  state.lastAction = "Suggestion dismissed";
+  render();
 }
 
 function setupRecognition() {
@@ -288,93 +363,6 @@ function setupRecognition() {
   };
 }
 
-async function startBackendRecording() {
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-    state.lastSuggestion = "Backend transcription needs microphone recording support. Use browser speech recognition or typed input.";
-    render();
-    return;
-  }
-
-  if (state.mediaRecorder?.state === "recording") return;
-
-  try {
-    state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const options = getRecorderOptions();
-    state.mediaRecorder = new MediaRecorder(state.mediaStream, options);
-
-    state.mediaRecorder.onstart = () => {
-      state.listening = true;
-      render();
-    };
-
-  state.mediaRecorder.ondataavailable = (event) => {
-      if (event.data?.size > 0 && state.active && !state.paused) {
-        sendAudioChunk(event.data);
-      }
-    };
-
-    state.mediaRecorder.onerror = () => {
-      state.lastSuggestion = "Audio recording failed. Typed transcript input still works.";
-      state.listening = false;
-      render();
-    };
-
-    state.mediaRecorder.onstop = () => {
-      state.listening = false;
-      render();
-    };
-
-    state.mediaRecorder.start(5000);
-  } catch {
-    state.lastSuggestion = "Microphone access was not available. Use typed transcript input to keep testing.";
-    state.listening = false;
-    render();
-  }
-}
-
-function getRecorderOptions() {
-  const supportedTypes = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4"
-  ];
-  const mimeType = supportedTypes.find((type) => MediaRecorder.isTypeSupported(type));
-  return mimeType ? { mimeType } : undefined;
-}
-
-async function sendAudioChunk(blob) {
-  state.pendingAudioChunks += 1;
-  state.transcribingAudio = true;
-  render();
-
-  try {
-    const extension = blob.type.includes("mp4") ? "mp4" : "webm";
-    const formData = new FormData();
-    formData.append("audio", blob, `chunk.${extension}`);
-
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Transcription failed.");
-    }
-
-    if (payload.text?.trim()) {
-      addTranscriptLine(payload.text);
-    }
-  } catch (error) {
-    state.phase = "Transcription Offline";
-    state.lastSuggestion = error.message || "Backend transcription is unavailable.";
-  } finally {
-    state.pendingAudioChunks = Math.max(0, state.pendingAudioChunks - 1);
-    state.transcribingAudio = state.pendingAudioChunks > 0;
-    render();
-  }
-}
-
 function startContinuousListening() {
   if (!state.recognition || state.listening || !state.active || state.paused) return;
 
@@ -396,22 +384,24 @@ function togglePause() {
   state.paused = !state.paused;
   if (state.paused) {
     stopAllListening();
+    state.coachingActive = false;
+    state.conversationState = "Paused";
+    state.currentSuggestion = "";
+    state.lastAction = "Paused";
     state.lastSuggestion = "Session paused.";
   } else {
-    state.lastSuggestion = `Session resumed. Listening continuously for "${state.wakeWord}".`;
-    startListeningForMode();
+    state.conversationState = "Listening";
+    state.lastAction = "Resumed";
+    state.lastSuggestion = `Session resumed. Say "${state.wakeWord}" to toggle active coaching.`;
+    startContinuousListening();
   }
   render();
 }
 
 function regenerateSuggestion() {
-  const latest = findLastWakeLine();
+  const latest = state.transcript[state.transcript.length - 1];
   if (!latest) return;
   requestAgentSuggestion(latest);
-}
-
-function findLastWakeLine() {
-  return [...state.transcript].reverse().find((line) => line.triggeredAgent);
 }
 
 function endSession() {
@@ -419,30 +409,64 @@ function endSession() {
   state.active = false;
   state.paused = false;
   state.listening = false;
+  state.coachingActive = false;
   state.phase = "Review";
+  state.conversationState = "Review";
+  state.currentSuggestion = "";
   if (state.transcript.length > 0) {
     addFollowUp(`Review whether the conversation with ${state.partner} achieved: ${state.goal}`);
   }
-  state.lastSuggestion = "Session ended. Review follow-ups before saving anything long term.";
+  state.review = generateLocalReview();
+  state.lastAction = "Session ended";
+  state.lastSuggestion = "Session ended. Review follow-ups, then delete local session data when finished.";
+  render();
+}
+
+function generateLocalReview() {
+  const lines = state.transcript.filter((line) => !line.codeword).length;
+  const accepted = state.acceptedSuggestions.length;
+  const dismissed = state.dismissedSuggestions.length;
+  const followUps = state.followUps.length;
+
+  return [
+    `Objective: ${state.goal}`,
+    `Partner: ${state.partner}`,
+    `Transcript lines: ${lines}`,
+    `Accepted suggestions: ${accepted}`,
+    `Dismissed suggestions: ${dismissed}`,
+    `Follow-ups captured: ${followUps}`,
+    accepted > 0
+      ? `Most recent accepted move: ${state.acceptedSuggestions[accepted - 1].text}`
+      : "No suggestions were accepted in this session."
+  ].join("\n");
+}
+
+function deleteSessionData() {
+  stopAllListening();
+  state.active = false;
+  state.paused = false;
+  state.coachingActive = false;
+  state.requestingAgent = false;
+  state.partner = "";
+  state.goal = "";
+  elements.partnerInput.value = "";
+  elements.goalInput.value = "";
+  state.phase = "Setup";
+  state.conversationState = "Setup";
+  state.transcript = [];
+  state.followUps = [];
+  state.acceptedSuggestions = [];
+  state.dismissedSuggestions = [];
+  state.review = "Local session data deleted.";
+  state.lastAction = "Deleted";
+  state.lastSuggestion = "Local session data deleted. Set a new objective to begin.";
+  state.currentSuggestion = "";
+  state.lastCoachRequestAt = 0;
   render();
 }
 
 function stopAllListening() {
   stopContinuousListening();
-  stopBackendRecording();
-}
-
-function stopBackendRecording() {
-  if (state.mediaRecorder?.state === "recording") {
-    state.mediaRecorder.stop();
-  }
-
-  if (state.mediaStream) {
-    state.mediaStream.getTracks().forEach((track) => track.stop());
-  }
-
-  state.mediaRecorder = null;
-  state.mediaStream = null;
   state.listening = false;
 }
 
@@ -452,8 +476,11 @@ elements.addLineButton.addEventListener("click", () => {
   elements.manualTranscript.value = "";
 });
 elements.pauseButton.addEventListener("click", togglePause);
+elements.acceptButton.addEventListener("click", acceptSuggestion);
+elements.dismissButton.addEventListener("click", dismissSuggestion);
 elements.regenerateButton.addEventListener("click", regenerateSuggestion);
 elements.endButton.addEventListener("click", endSession);
+elements.deleteButton.addEventListener("click", deleteSessionData);
 
 setupRecognition();
 fetchHealth();

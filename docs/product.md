@@ -2,7 +2,7 @@
 
 EarBud is a local-first AI coach for high-stakes conversations.
 
-The product helps a user enter a conversation with a clear objective, understand the live dynamics, and choose the next useful thing to say. It is not a general productivity assistant, a day planner, or an iPhone-first earbud product. The current target is a local desktop/browser prototype.
+The product helps a user enter a conversation with a clear objective, understand the live dynamics, and choose the next useful thing to say. The current target is a local desktop/browser prototype.
 
 ## Problem
 

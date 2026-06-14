@@ -4,7 +4,7 @@ EarBud is a local-first conversation coaching app.
 
 Before a conversation, you tell EarBud who you are talking to and what objective you want to accomplish. During the conversation, EarBud listens to the transcript, watches for moments that matter, and gives short tactical advice to help you move toward that objective.
 
-This project is no longer aimed at being a general daily assistant or an iPhone app. The current direction is a desktop/browser prototype that runs locally.
+The current direction is a desktop/browser prototype that runs locally.
 
 ## What It Does
 
@@ -87,12 +87,14 @@ This repo includes a browser-based prototype and a Node backend agent:
 
 - Conversation objective setup.
 - Browser speech recognition when supported by the browser.
-- Optional backend audio transcription with OpenAI speech-to-text.
 - Typed transcript fallback for testing.
 - Backend coaching suggestions.
+- Codeword toggled active coaching.
+- Accept, dismiss, evaluate, end, and delete controls.
+- Local post-session review.
 - Session follow-ups and review state.
 
-The implementation currently still uses wake-word gated requests. The intended product behavior is shifting to wake-word activation: after the codeword is spoken, EarBud should continue listening and decide when advice is useful until the codeword is spoken again.
+After the codeword is spoken, EarBud continues listening and evaluates the conversation for useful advice until the codeword is spoken again.
 
 ## Run Locally
 
@@ -145,4 +147,4 @@ See [Privacy and Safety](docs/privacy-and-safety.md) for the intended safety mod
 
 ## Project Status
 
-EarBud is an early local prototype. The next major product change is to replace single wake-word requests with an active coaching mode that turns on and off with the codeword.
+EarBud is an early local prototype focused on objective-driven conversation coaching.

@@ -224,9 +224,39 @@ textarea:focus {
   line-height: 1.35;
 }
 
+.coach-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.coach-meta > div,
+.review-box {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 12px;
+}
+
+.meta-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.coach-meta strong {
+  display: block;
+  line-height: 1.25;
+}
+
 .control-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -260,10 +290,17 @@ textarea:focus {
 }
 
 .followup-list {
-  margin: 0;
+  margin: 14px 0 0;
   padding-left: 18px;
   color: var(--ink);
   line-height: 1.6;
+}
+
+.review-box {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.6;
+  white-space: pre-line;
 }
 
 @media (max-width: 860px) {

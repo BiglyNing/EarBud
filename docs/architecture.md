@@ -24,7 +24,7 @@ The browser app is the control center for:
 - Showing the transcript and latest suggestion.
 - Reviewing follow-ups after the conversation.
 
-The app should run at `localhost` during development. It is not currently designed as an iPhone app or public hosted service.
+The app should run at `localhost` during development.
 
 ### Audio Capture
 
@@ -46,7 +46,6 @@ The system should optimize for:
 - Low latency
 - Clear transcript chunks
 - Browser speech recognition when available
-- Optional backend transcription for local testing
 - Graceful fallback to typed transcript input
 
 ### Strategy Engine
@@ -107,7 +106,7 @@ The default should be short and non-disruptive.
 
 - UI: vanilla HTML, CSS, and browser JavaScript.
 - Server: local Node.js and Express.
-- Transcription: browser speech recognition or optional backend transcription.
+- Transcription: browser speech recognition or typed transcript input.
 - Agent backend: OpenAI Responses API when `OPENAI_API_KEY` is configured.
 - Storage: in-memory browser state for the active session.
 
