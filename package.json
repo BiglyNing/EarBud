@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "setup:speaker-id": "python -m pip install -r requirements-speaker-id.txt"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "multer": "^2.1.1",
+    "ws": "^8.21.0"
   }
 }

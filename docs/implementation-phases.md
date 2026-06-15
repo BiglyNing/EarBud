@@ -97,7 +97,11 @@ Current status:
 
 - Browser speech recognition is available as the lowest-friction transcription path.
 - Typed transcript input is available as a fallback.
-- Backend audio transcription was removed from the local-first prototype.
+- Transcript lines support user-selected speaker labels for `Me` and `Them`.
+- Automatic call mode labels microphone audio as `Me` and shared tab/window/system audio as `Them`.
+- Backend Gemini transcription is available at `/api/transcribe` for source-separated automatic speaker mode.
+- One-mic speaker diarization is available through AssemblyAI streaming at `/api/diarize-stream`.
+- AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by an optional local voiceprint.
 
 ## Phase 4: Strategy Coach Interaction Layer
 
@@ -138,6 +142,7 @@ Current status:
 - The backend uses the Gemini API when `GEMINI_API_KEY` is configured.
 - The backend prompt uses the new strategic coach behavior.
 - The frontend sends transcript context while active coaching is on.
+- The frontend sends speaker-labeled transcript context so the coach can distinguish the user from the other speaker.
 - The backend returns structured phase, state, chime-in, suggestion, and follow-up fields.
 - A basic local safety screen redirects obvious coercive or deceptive requests.
 

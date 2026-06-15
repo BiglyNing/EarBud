@@ -15,6 +15,13 @@ Before the conversation, the user gives EarBud:
 - Boundaries or topics to avoid.
 - The wake word/codeword that turns active coaching on and off.
 
+During the conversation, transcript lines are labeled as:
+
+- `Me`: the EarBud user.
+- `Them`: the conversation partner or other person.
+
+One-mic mode uses AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices are `Them` (with short unattributed turns resolved by an optional local voiceprint or a turn-taking guess). Automatic call mode labels the microphone as `Me` and shared tab/window/system audio as `Them`. Manual mode uses user-selected labels. The coach uses those labels to decide what the user should say or do next.
+
 Example:
 
 > "I am about to talk to my professor. I want to ask for help understanding why I got a low grade, and I want to stay respectful."
@@ -115,6 +122,7 @@ Live suggestions should be:
 - Actionable
 - Respectful
 - Aligned with the user's stated objective
+- Directed at what the user should say or do, not what the other person should do
 - Easy to say out loud
 - Timed only when useful
 

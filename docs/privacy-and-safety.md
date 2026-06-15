@@ -5,7 +5,7 @@ EarBud handles live audio, conversation context, and personal objectives. That m
 ## Core Principles
 
 - The user controls when listening starts and stops.
-- People should know when they are being recorded or transcribed where required.
+- People should know when they are being recorded or transcribed where required. 
 - The app should clearly explain what is processed, stored, and deleted.
 - Sensitive data should be minimized.
 - Long-term memory should not exist by default in the local prototype.
@@ -42,6 +42,7 @@ Recommended defaults:
 
 - Process temporary transcript chunks for live suggestions.
 - Do not store raw audio unless the user explicitly enables it.
+- Keep speaker identity enrollment local. The current prototype stores the enrolled embedding in the local Python worker process memory, not in the browser or repo.
 - Let users review summaries before saving them.
 - Let users delete sessions permanently.
 - Separate temporary conversation context from durable memory.

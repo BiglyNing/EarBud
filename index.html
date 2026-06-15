@@ -39,6 +39,15 @@
             Codeword
             <input id="wakeWordInput" type="text" value="earbud" autocomplete="off">
           </label>
+          <label>
+            Speaker detection
+            <select id="speakerModeInput">
+              <option value="diarize">One mic, in person: auto-detect who is talking</option>
+              <option value="source">Online call: mic = Me, shared audio = Them</option>
+              <option value="manual">Manual labels / browser transcription</option>
+            </select>
+          </label>
+          <p class="helper-text" id="speakerModeStatus">One-mic mode auto-detects speakers. Speak first to set your voice as Me.</p>
           <p class="helper-text" id="backendStatus">Checking backend...</p>
           <button class="primary-action" type="submit">Start Session</button>
         </form>
@@ -80,6 +89,13 @@
         <label class="manual-entry">
           Transcript input
           <textarea id="manualTranscript" rows="3" placeholder="Type a line. Use the codeword to toggle active coaching on or off."></textarea>
+        </label>
+        <label>
+          Transcript speaker
+          <select id="manualSpeakerInput">
+            <option value="me">Me</option>
+            <option value="them">Them</option>
+          </select>
         </label>
         <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
       </section>
@@ -130,7 +146,20 @@
           <div class="status-dot" id="sessionStatus">Inactive</div>
         </div>
         <div class="live-transcript-wrap" aria-live="polite">
-          <span class="meta-label">Live Browser Transcription</span>
+          <span class="meta-label">Live Transcription</span>
+          <div class="voice-calibration">
+            <button id="swapSpeakerButton" class="secondary-action" type="button" disabled>Swap Me / Them</button>
+            <button id="calibrateVoiceButton" class="secondary-action" type="button">Calibrate my voice</button>
+            <button id="clearVoiceCalibrationButton" class="secondary-action" type="button" disabled>Clear voice</button>
+            <p class="helper-text" id="voiceCalibrationStatus">No voice calibration saved.</p>
+          </div>
+          <label class="inline-select">
+            Live mic speaker
+            <select id="liveSpeakerInput">
+              <option value="me">Me</option>
+              <option value="them">Them</option>
+            </select>
+          </label>
           <div class="live-transcript" id="liveTranscript">
             Start a session, allow microphone access, then speak. Live words show here.
           </div>

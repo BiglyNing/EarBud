@@ -8,7 +8,7 @@ All notable changes to EarBud will be documented in this file.
 - Added backend audio transcription endpoint.
 - Added browser recording mode that sends short audio chunks to backend transcription.
 - Added backend readiness checks and speech-to-text documentation.
-- Added Node backend agent route using the OpenAI Responses API.
+- Added Node backend agent route for model-backed coaching suggestions.
 - Changed the browser prototype from push-to-talk to continuous listening after session start.
 - Added configurable wake-word gated agent responses.
 - Added Phase 2 browser prototype with goal setup, transcript input, speech recognition support, live coaching suggestions, and follow-ups.

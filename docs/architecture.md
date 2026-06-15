@@ -28,7 +28,7 @@ The app should run at `localhost` during development.
 
 ### Audio Capture
 
-Audio is captured from the computer microphone through the browser.
+Audio is captured from the computer microphone through the browser. In one-mic diarization mode, a single microphone stream is sent (as raw PCM16) to AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices `Them`. Short turns AssemblyAI cannot attribute are resolved by an optional local SpeechBrain voiceprint or a turn-taking guess. In automatic call mode, EarBud instead captures shared tab/window/system audio so the mic can be labeled `Me` and the shared audio `Them`.
 
 The prototype should support clear user-controlled states:
 
@@ -46,6 +46,8 @@ The system should optimize for:
 - Low latency
 - Clear transcript chunks
 - Browser speech recognition when available
+- Source-separated transcription for online calls
+- AssemblyAI streaming diarization for one-mic speaker detection
 - Graceful fallback to typed transcript input
 
 ### Strategy Engine
@@ -74,6 +76,7 @@ Examples:
 - Desired tone
 - Wake word/codeword
 - Recent transcript
+- Speaker labels for transcript lines: `Me` or `Them`
 - Active coaching status
 - Latest suggestion
 - Follow-ups for review
@@ -94,7 +97,7 @@ The default should be short and non-disruptive.
 
 1. User starts a local session and defines an objective.
 2. Audio is captured through the browser or text is entered manually.
-3. Transcript lines are added to the session.
+3. Transcript lines are added to the session with a speaker label.
 4. The wake word/codeword toggles active coaching on.
 5. While active, transcript chunks are sent to the coach for evaluation.
 6. The coach either returns a short suggestion or chooses silence.
@@ -106,7 +109,8 @@ The default should be short and non-disruptive.
 
 - UI: vanilla HTML, CSS, and browser JavaScript.
 - Server: local Node.js and Express.
-- Transcription: browser speech recognition or typed transcript input.
+- Transcription: browser speech recognition, Gemini-backed source-separated transcription, AssemblyAI streaming diarization, or typed transcript input.
+- Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) plus an optional local SpeechBrain voiceprint for short turns in one-mic mode; source-separated `Me` / `Them` labels in automatic call mode; user-selected `Me` / `Them` labels in manual mode.
 - Agent backend: Gemini API when `GEMINI_API_KEY` is configured.
 - Storage: in-memory browser state for the active session.
 

@@ -302,6 +302,28 @@ textarea:focus {
   margin-bottom: 14px;
 }
 
+.voice-calibration {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.voice-calibration .secondary-action {
+  justify-self: start;
+}
+
+.voice-calibration .helper-text {
+  margin: 0;
+}
+
+.inline-select {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 180px);
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .live-transcript {
   min-height: 68px;
   border: 1px solid #acd8c8;
