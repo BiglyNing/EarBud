@@ -42,7 +42,6 @@ Recommended defaults:
 
 - Process temporary transcript chunks for live suggestions.
 - Do not store raw audio unless the user explicitly enables it.
-- Keep speaker identity enrollment local. The current prototype stores the enrolled embedding in the local Python worker process memory, not in the browser or repo.
 - Let users review summaries before saving them.
 - Let users delete sessions permanently.
 - Separate temporary conversation context from durable memory.

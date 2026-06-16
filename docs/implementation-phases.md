@@ -101,7 +101,7 @@ Current status:
 - Automatic call mode labels microphone audio as `Me` and shared tab/window/system audio as `Them`.
 - Backend Gemini transcription is available at `/api/transcribe` for source-separated automatic speaker mode.
 - One-mic speaker diarization is available through AssemblyAI streaming at `/api/diarize-stream`.
-- AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by an optional local voiceprint.
+- AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by a turn-taking guess.
 
 ## Phase 4: Strategy Coach Interaction Layer
 

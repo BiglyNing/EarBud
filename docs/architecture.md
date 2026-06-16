@@ -28,7 +28,7 @@ The app should run at `localhost` during development.
 
 ### Audio Capture
 
-Audio is captured from the computer microphone through the browser. In one-mic diarization mode, a single microphone stream is sent (as raw PCM16) to AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices `Them`. Short turns AssemblyAI cannot attribute are resolved by an optional local SpeechBrain voiceprint or a turn-taking guess. In automatic call mode, EarBud instead captures shared tab/window/system audio so the mic can be labeled `Me` and the shared audio `Them`.
+Audio is captured from the computer microphone through the browser. In one-mic diarization mode, a single microphone stream is sent (as raw PCM16) to AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices `Them`. Short turns AssemblyAI cannot attribute are resolved by a turn-taking guess. In automatic call mode, EarBud instead captures shared tab/window/system audio so the mic can be labeled `Me` and the shared audio `Them`.
 
 The prototype should support clear user-controlled states:
 
@@ -110,7 +110,7 @@ The default should be short and non-disruptive.
 - UI: vanilla HTML, CSS, and browser JavaScript.
 - Server: local Node.js and Express.
 - Transcription: browser speech recognition, Gemini-backed source-separated transcription, AssemblyAI streaming diarization, or typed transcript input.
-- Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) plus an optional local SpeechBrain voiceprint for short turns in one-mic mode; source-separated `Me` / `Them` labels in automatic call mode; user-selected `Me` / `Them` labels in manual mode.
+- Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) with a turn-taking guess for short unattributed turns in one-mic mode; source-separated `Me` / `Them` labels in automatic call mode; user-selected `Me` / `Them` labels in manual mode.
 - Agent backend: Gemini API when `GEMINI_API_KEY` is configured.
 - Storage: in-memory browser state for the active session.
 

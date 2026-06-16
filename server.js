@@ -1,7 +1,6 @@
 import "dotenv/config";
 import http from "http";
 import path from "path";
-import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import express from "express";
 import multer from "multer";
@@ -18,129 +17,6 @@ const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.en
 const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY || "";
 let geminiQuotaLimitedUntil = 0;
 
-// --- Local speaker-identity worker (free, on-device voiceprint) -------------
-// A persistent SpeechBrain Python process holds one enrolled "Me" voiceprint and
-// answers verify requests over a JSON-lines stdio protocol. It is used only to
-// resolve short/uncertain turns that AssemblyAI cannot attribute.
-const speakerScript = path.join(__dirname, "tools", "speaker_verify.py");
-const speakerPython = process.env.SPEAKER_PYTHON || (process.platform === "win32" ? "python" : "python3");
-
-const speaker = {
-  proc: null,
-  ready: null,
-  enrolled: false,
-  nextId: 1,
-  pending: new Map(),
-  buffer: ""
-};
-
-function startSpeakerWorker() {
-  if (speaker.proc) return speaker.ready;
-
-  speaker.ready = new Promise((resolve, reject) => {
-    let child;
-    try {
-      child = spawn(speakerPython, [speakerScript], {
-        cwd: __dirname,
-        stdio: ["pipe", "pipe", "pipe"]
-      });
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
-    speaker.proc = child;
-    child.stdout.setEncoding("utf8");
-
-    child.stdout.on("data", (chunk) => {
-      speaker.buffer += chunk;
-      let newline;
-      while ((newline = speaker.buffer.indexOf("\n")) >= 0) {
-        const line = speaker.buffer.slice(0, newline).trim();
-        speaker.buffer = speaker.buffer.slice(newline + 1);
-        if (!line) continue;
-
-        let message;
-        try {
-          message = JSON.parse(line);
-        } catch {
-          continue;
-        }
-
-        if (message.type === "ready") {
-          resolve(true);
-          continue;
-        }
-
-        const handler = message.id != null ? speaker.pending.get(message.id) : null;
-        if (handler) {
-          speaker.pending.delete(message.id);
-          if (message.ok) handler.resolve(message);
-          else handler.reject(new Error(message.error || "Speaker worker request failed."));
-        }
-      }
-    });
-
-    child.stderr.on("data", (data) => {
-      const text = data.toString().trim();
-      if (text) console.error(`[speaker] ${text}`);
-    });
-
-    child.on("error", (error) => {
-      reject(error);
-      failSpeakerWorker(error);
-    });
-
-    child.on("exit", (code) => {
-      const error = new Error(`Speaker worker exited (${code}).`);
-      failSpeakerWorker(error);
-      if (code !== 0) console.error(error.message);
-    });
-  });
-
-  return speaker.ready;
-}
-
-function failSpeakerWorker(error) {
-  for (const handler of speaker.pending.values()) handler.reject(error);
-  speaker.pending.clear();
-  speaker.proc = null;
-  speaker.ready = null;
-  speaker.enrolled = false;
-}
-
-function speakerRequest(type, payload = {}, timeoutMs = 30000) {
-  return startSpeakerWorker().then(
-    () =>
-      new Promise((resolve, reject) => {
-        if (!speaker.proc || speaker.proc.stdin.destroyed) {
-          reject(new Error("Speaker worker is not running."));
-          return;
-        }
-
-        const id = speaker.nextId++;
-        const timer = setTimeout(() => {
-          if (speaker.pending.has(id)) {
-            speaker.pending.delete(id);
-            reject(new Error("Speaker worker timed out."));
-          }
-        }, timeoutMs);
-
-        speaker.pending.set(id, {
-          resolve: (message) => {
-            clearTimeout(timer);
-            resolve(message);
-          },
-          reject: (error) => {
-            clearTimeout(timer);
-            reject(error);
-          }
-        });
-
-        speaker.proc.stdin.write(`${JSON.stringify({ id, type, ...payload })}\n`);
-      })
-  );
-}
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -157,10 +33,6 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     agentReady: Boolean(client),
     diarizationReady: Boolean(assemblyAiApiKey),
-    speakerIdentityReady: true,
-    speakerIdentityEnrolled: speaker.enrolled,
-    speakerIdentityBackend: "speechbrain",
-    speakerIdentityThreshold: getSpeakerIdentityThreshold(),
     model,
     geminiQuotaLimited: Boolean(quotaLimit),
     geminiQuotaRetryAt: quotaLimit?.retryAt || null
@@ -404,77 +276,6 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
       error: "Gemini failed to transcribe this audio chunk."
     });
   }
-});
-
-app.get("/api/speaker-id/status", (_req, res) => {
-  res.json({
-    ok: true,
-    enrolled: speaker.enrolled,
-    backend: "speechbrain",
-    threshold: getSpeakerIdentityThreshold()
-  });
-});
-
-// Enroll the user's voice once. Expects a WAV of clear speech.
-app.post("/api/speaker-id/enroll", upload.single("audio"), async (req, res) => {
-  if (!req.file?.buffer) {
-    res.status(400).json({ error: "Audio file is required to calibrate your voice." });
-    return;
-  }
-
-  try {
-    const result = await speakerRequest("enroll", { audio: req.file.buffer.toString("base64") });
-    speaker.enrolled = true;
-    res.json({
-      ok: true,
-      enrolled: true,
-      backend: result.backend || "speechbrain",
-      model: result.model || null,
-      threshold: result.threshold
-    });
-  } catch (error) {
-    console.error("Speaker enrollment failed:", error.message);
-    res.status(502).json({ error: speakerErrorMessage(error) });
-  }
-});
-
-// Verify a single-speaker audio slice against the enrolled voiceprint.
-app.post("/api/speaker-id/verify", upload.single("audio"), async (req, res) => {
-  if (!speaker.enrolled) {
-    res.status(409).json({ error: "No enrolled voice. Calibrate your voice first." });
-    return;
-  }
-  if (!req.file?.buffer) {
-    res.status(400).json({ error: "Audio file is required." });
-    return;
-  }
-
-  try {
-    const result = await speakerRequest("verify", { audio: req.file.buffer.toString("base64") });
-    res.json({
-      ok: true,
-      speaker: result.speaker,
-      score: result.score,
-      threshold: result.threshold
-    });
-  } catch (error) {
-    res.status(502).json({ error: speakerErrorMessage(error) });
-  }
-});
-
-app.post("/api/speaker-id/clear", async (_req, res) => {
-  if (!speaker.proc) {
-    speaker.enrolled = false;
-    res.json({ ok: true, enrolled: false });
-    return;
-  }
-  try {
-    await speakerRequest("clear");
-  } catch (error) {
-    console.error("Speaker clear failed:", error.message);
-  }
-  speaker.enrolled = false;
-  res.json({ ok: true, enrolled: false });
 });
 
 app.post("/api/coach", async (req, res) => {
@@ -790,18 +591,6 @@ function parseJsonMessage(message) {
   }
 }
 
-function speakerErrorMessage(error) {
-  const message = error?.message || "";
-  if (message.includes("ENOENT")) {
-    return `Could not start the speaker-ID worker. Install Python and the deps in requirements-speaker-id.txt, or set SPEAKER_PYTHON to your interpreter (tried "${speakerPython}").`;
-  }
-  return message || "Local speaker identification failed.";
-}
-
-function getSpeakerIdentityThreshold() {
-  return Number(process.env.SPEECHBRAIN_THRESHOLD || 0.65);
-}
-
 function parseAgentJson(text) {
   const fallback = {
     phase: "Guiding",
@@ -854,23 +643,5 @@ server.listen(port, () => {
   console.log(assemblyAiApiKey
     ? `Streaming diarization: AssemblyAI ${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"} (speaker_labels enabled).`
     : "Streaming diarization disabled: set ASSEMBLYAI_API_KEY.");
-  console.log(`Local speaker-ID worker: SpeechBrain (spawned on first calibration via "${speakerPython}").`);
 });
 
-function shutdownSpeakerWorker() {
-  if (speaker.proc) {
-    try {
-      speaker.proc.stdin.end();
-    } catch {
-      // ignore
-    }
-    speaker.proc.kill();
-    speaker.proc = null;
-  }
-}
-
-process.on("exit", shutdownSpeakerWorker);
-process.on("SIGINT", () => {
-  shutdownSpeakerWorker();
-  process.exit(0);
-});

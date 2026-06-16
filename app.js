@@ -38,13 +38,9 @@ const state = {
   themStream: null,
   diarizeStream: null,
   diarizeSocket: null,
-  diarizeStreamStartedAt: 0,
   micRecorder: null,
   themRecorder: null,
   diarizeRecorder: null,
-  speakerIdentityCapture: null,
-  speakerIdentityFrames: [],
-  speakerIdentityPending: false,
   pendingTranscriptionChunks: 0,
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
@@ -53,16 +49,8 @@ const state = {
   meClusterId: null,
   knownClusters: [],
   diarizePcm: null,
-  speakerSwitchWords: 2,
-  speakerSwitchMargin: 0.04,
-  speakerImmediateSwitchMargin: 0.01,
-  voiceUncertainMargin: 0.04,
   lastDiarizedSpeaker: null,
   lastConfidentSpeaker: null,
-  voiceCalibration: null,
-  voiceCalibrating: false,
-  voiceMatchThreshold: 0.65,
-  lastVoiceMatch: null,
   health: null,
   lastCoachRequestAt: 0,
   coachCooldownMs: 12000,
@@ -96,9 +84,6 @@ const elements = {
   liveTranscript: document.querySelector("#liveTranscript"),
   liveSpeakerInput: document.querySelector("#liveSpeakerInput"),
   swapSpeakerButton: document.querySelector("#swapSpeakerButton"),
-  calibrateVoiceButton: document.querySelector("#calibrateVoiceButton"),
-  clearVoiceCalibrationButton: document.querySelector("#clearVoiceCalibrationButton"),
-  voiceCalibrationStatus: document.querySelector("#voiceCalibrationStatus"),
   sessionStatus: document.querySelector("#sessionStatus"),
   reviewBox: document.querySelector("#reviewBox"),
   followupList: document.querySelector("#followupList"),
@@ -151,7 +136,7 @@ function render() {
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
   renderSpeakerModeStatus();
   renderVoiceControls();
-  renderVoiceCalibration();
+  renderSwapControl();
   renderBackendStatus();
 
   elements.transcriptList.innerHTML = "";
@@ -159,8 +144,7 @@ function render() {
     const item = document.createElement("li");
     const meta = document.createElement("span");
     meta.className = "line-meta";
-    const scoreText = formatScore(line.speechBrainScore, line.speechBrainThreshold);
-    meta.textContent = `Line ${index + 1} - ${line.time} - ${getSpeakerLabel(line.speaker)}${scoreText}${line.codeword ? " - codeword" : ""}`;
+    meta.textContent = `Line ${index + 1} - ${line.time} - ${getSpeakerLabel(line.speaker)}${line.codeword ? " - codeword" : ""}`;
     item.append(meta, document.createTextNode(line.text));
     elements.transcriptList.appendChild(item);
   });
@@ -183,7 +167,7 @@ function renderSpeakerModeStatus() {
   if (state.speakerMode === "diarize") {
     const providerName = "AssemblyAI";
     const pending = state.pendingTranscriptionChunks > 0 ? ` ${state.pendingTranscriptionChunks} chunk(s) diarizing.` : "";
-    elements.speakerModeStatus.textContent = `One-mic mode uses ${providerName} plus your calibrated voice to label Me/Them.${pending}`;
+    elements.speakerModeStatus.textContent = `One-mic mode uses ${providerName} diarization to label Me/Them. First speaker = Me; tap Swap if reversed.${pending}`;
     elements.liveSpeakerInput.disabled = true;
     return;
   }
@@ -199,29 +183,11 @@ function renderSpeakerModeStatus() {
   elements.liveSpeakerInput.disabled = false;
 }
 
-function renderVoiceCalibration() {
+function renderSwapControl() {
   if (elements.swapSpeakerButton) {
     const canSwap = state.speakerMode === "diarize" && state.active && state.knownClusters.length > 1;
     elements.swapSpeakerButton.disabled = !canSwap;
   }
-  if (!elements.voiceCalibrationStatus) return;
-  if (elements.calibrateVoiceButton) {
-    elements.calibrateVoiceButton.disabled = state.voiceCalibrating;
-    elements.calibrateVoiceButton.textContent = state.voiceCalibrating
-      ? "Listening..."
-      : state.voiceCalibration
-        ? "Re-calibrate my voice"
-        : "Calibrate my voice";
-  }
-  if (elements.clearVoiceCalibrationButton) {
-    elements.clearVoiceCalibrationButton.disabled = !state.voiceCalibration || state.voiceCalibrating;
-  }
-  const match = state.lastVoiceMatch
-    ? ` Last ${getSpeakerIdLabel()} match: ${state.lastVoiceMatch.score.toFixed(2)} / ${state.lastVoiceMatch.threshold.toFixed(2)} (${getVoiceMatchLabel(state.lastVoiceMatch.speaker)}).`
-    : "";
-  elements.voiceCalibrationStatus.textContent = state.voiceCalibration
-    ? `Voice calibrated locally with ${state.voiceCalibration.backend || "speaker ID"}. Me threshold: ${state.voiceMatchThreshold.toFixed(2)}.${match}`
-    : `No ${getSpeakerIdLabel()} voice enrollment yet. Calibrate to label your voice as Me.`;
 }
 
 function renderVoiceControls() {
@@ -265,7 +231,6 @@ function startSession(event) {
   state.lastAction = "Session started";
   state.currentSuggestion = "";
   state.lastCoachRequestAt = 0;
-  state.speakerIdentityFrames = [];
   state.pendingStreamingFinalKeys.clear();
   state.lastStreamingFinalText = "";
   state.meClusterId = null;
@@ -307,12 +272,6 @@ async function fetchHealth() {
     if (state.health.geminiQuotaRetryAt) {
       state.geminiQuotaRetryAt = Date.parse(state.health.geminiQuotaRetryAt) || state.geminiQuotaRetryAt;
     }
-    // Default to the simple "first speaker = Me" rule. The voiceprint only
-    // engages if the user explicitly taps Calibrate this session; we no longer
-    // auto-enable it from a leftover server-side enrollment.
-    if (state.health.speakerIdentityThreshold) {
-      state.voiceMatchThreshold = Number(state.health.speakerIdentityThreshold) || state.voiceMatchThreshold;
-    }
   } catch {
     state.health = {
       ok: false,
@@ -339,8 +298,6 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
     text: cleanText,
     speaker: normalizedSpeaker,
     cluster: metadata.cluster || null,
-    speechBrainScore: typeof metadata.speechBrainScore === "number" ? metadata.speechBrainScore : null,
-    speechBrainThreshold: typeof metadata.speechBrainThreshold === "number" ? metadata.speechBrainThreshold : null,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     codeword
   };
@@ -438,23 +395,17 @@ async function startDiarizedTranscription() {
   }
 
   try {
-    state.liveTranscript = state.voiceCalibration
-      ? "Starting one-mic diarization with calibrated voice matching."
-      : "Starting one-mic diarization. Speak first so you are labeled Me (use Swap if reversed).";
+    state.liveTranscript = "Starting one-mic diarization. Speak first so you are labeled Me (use Swap if reversed).";
     render();
 
     state.diarizeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    state.diarizeStreamStartedAt = performance.now();
-    state.speakerIdentityFrames = [];
     state.diarizeSocket = createDiarizeSocket();
     // AssemblyAI streaming takes raw PCM16, so stream linear16 from an
     // AudioWorklet instead of Opus chunks from MediaRecorder.
     await startDiarizePcm(state.diarizeStream, state.diarizeSocket);
     state.listening = true;
     const providerName = "AssemblyAI";
-    state.liveTranscript = state.voiceCalibration
-      ? "One-mic diarization is listening. Calibrated voice = Me; other voices = Them."
-      : `One-mic diarization is listening (${providerName}). First speaker = Me; tap Swap if reversed.`;
+    state.liveTranscript = `One-mic diarization is listening (${providerName}). First speaker = Me; tap Swap if reversed.`;
     render();
   } catch (error) {
     console.error("[diarize] start failed:", error);
@@ -563,10 +514,7 @@ async function sendAudioChunk(blob, speaker) {
   }
 }
 
-// Stream raw 16 kHz mono PCM16 from the mic to the diarization websocket, and
-// keep a rolling copy of the exact same audio so we can slice out a finished
-// turn and verify it against the enrolled voiceprint (perfectly time-aligned
-// with AssemblyAI, which is timing the same byte stream we send it).
+// Stream raw 16 kHz mono PCM16 from the mic to the diarization websocket.
 async function startDiarizePcm(stream, socket) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const context = new AudioContextClass();
@@ -584,8 +532,6 @@ async function startDiarizePcm(stream, socket) {
     node,
     source,
     sink,
-    chunks: [],
-    totalSamples: 0,
     sampleRate: 16000
   };
 
@@ -594,7 +540,6 @@ async function startDiarizePcm(stream, socket) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     const samples = downsampleFloat(event.data, inputRate, 16000);
     socket.send(float32ToPcm16(samples));
-    appendDiarizePcm(samples);
   };
 
   source.connect(node);
@@ -614,41 +559,6 @@ function stopDiarizePcm() {
     // ignore teardown errors
   }
   state.diarizePcm = null;
-}
-
-function appendDiarizePcm(samples) {
-  const pcm = state.diarizePcm;
-  if (!pcm) return;
-  pcm.chunks.push({ start: pcm.totalSamples, samples });
-  pcm.totalSamples += samples.length;
-  // Keep ~30s; turns are verified within a second or two of finishing.
-  const maxSamples = pcm.sampleRate * 30;
-  while (pcm.chunks.length > 1 && pcm.totalSamples - pcm.chunks[0].start > maxSamples) {
-    pcm.chunks.shift();
-  }
-}
-
-function getDiarizePcmSlice(startSec, endSec) {
-  const pcm = state.diarizePcm;
-  if (!pcm || pcm.chunks.length === 0) return null;
-  const rate = pcm.sampleRate;
-  const startSample = Math.max(0, Math.floor(startSec * rate));
-  const endSample = Math.floor(endSec * rate);
-  const length = endSample - startSample;
-  if (length <= 0) return null;
-
-  const out = new Float32Array(length);
-  let written = 0;
-  for (const chunk of pcm.chunks) {
-    const chunkEnd = chunk.start + chunk.samples.length;
-    if (chunkEnd <= startSample || chunk.start >= endSample) continue;
-    const from = Math.max(startSample, chunk.start) - chunk.start;
-    const to = Math.min(endSample, chunkEnd) - chunk.start;
-    out.set(chunk.samples.subarray(from, to), chunk.start + from - startSample);
-    written += to - from;
-  }
-  if (written < length * 0.5) return null; // too much aged out of the buffer
-  return out;
 }
 
 // Nearest-neighbour downsample to 16 kHz (good enough for speech + diarization).
@@ -761,7 +671,7 @@ function handleStreamingSegments(segments, isFinal) {
   }));
 
   const display = labeled
-    .map((segment) => `${getVoiceMatchLabel(segment.speaker)}: ${segment.text}`)
+    .map((segment) => `${getSpeakerLabel(segment.speaker)}: ${segment.text}`)
     .join("  ");
   if (display) {
     state.liveTranscript = `${isFinal ? "Final" : "Hearing"}: ${display}`;
@@ -778,29 +688,25 @@ function handleStreamingSegments(segments, isFinal) {
   }
 }
 
-async function commitFinalStreamingSegments(segments) {
+function commitFinalStreamingSegments(segments) {
   for (const segment of segments) {
     let speaker;
-    let resolved = null;
 
     if (!segment.uncertain) {
-      // Confident turn: AssemblyAI decides (first cluster = Me). No voiceprint.
+      // Confident turn: AssemblyAI decides (first cluster = Me).
       speaker = segment.speaker === "them" ? "them" : "me";
       state.lastConfidentSpeaker = speaker;
     } else {
-      // Short / unattributed turn: voiceprint first (only place it is used),
-      // then a turn-taking guess (a short reply is usually the other person).
-      resolved = state.voiceCalibration ? await resolveSegmentByVoice(segment) : null;
-      speaker = resolved?.speaker || guessShortTurnSpeaker();
+      // Short / unattributed turn: a turn-taking guess (a short reply is
+      // usually the other person).
+      speaker = guessShortTurnSpeaker();
     }
 
     state.lastDiarizedSpeaker = speaker;
     addTranscriptLine(segment.text, speaker, {
       // Uncertain turns carry no cluster, so Swap (which re-maps by cluster)
-      // leaves their voiceprint/heuristic decision intact.
-      cluster: segment.uncertain ? null : segment.cluster,
-      speechBrainScore: resolved?.score ?? null,
-      speechBrainThreshold: resolved?.threshold ?? null
+      // leaves their heuristic decision intact.
+      cluster: segment.uncertain ? null : segment.cluster
     });
   }
 }
@@ -811,166 +717,6 @@ function guessShortTurnSpeaker() {
   if (state.lastConfidentSpeaker === "me") return "them";
   if (state.lastConfidentSpeaker === "them") return "me";
   return "me";
-}
-
-// Slice the finished turn's exact audio out of the rolling buffer and verify it
-// against the enrolled voiceprint before the transcript line is committed. A
-// near-threshold score is intentionally left unresolved so we do not turn shaky
-// evidence into a confident but wrong Me/Them label.
-async function resolveSegmentByVoice(segment) {
-  if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end) || !state.diarizePcm) return null;
-
-  // The worker needs ~1s of audio. Short turns are padded symmetrically with
-  // surrounding audio so the voiceprint has something to work with (it may pull
-  // in a little neighbouring speech — the turn-taking fallback covers misses).
-  const minSec = 1.2;
-  let startSec = segment.start - 0.1;
-  let endSec = segment.end + 0.1;
-  const span = endSec - startSec;
-  if (span < minSec) {
-    const pad = (minSec - span) / 2;
-    startSec -= pad;
-    endSec += pad;
-  }
-
-  const slice = getDiarizePcmSlice(startSec, endSec);
-  if (!slice || slice.length < state.diarizePcm.sampleRate * 1.0) return null; // worker needs ~1s
-
-  const wav = encodeWav(slice, state.diarizePcm.sampleRate);
-  const formData = new FormData();
-  formData.append("audio", wav, "turn.wav");
-
-  try {
-    const response = await fetch("/api/speaker-id/verify", { method: "POST", body: formData });
-    if (!response.ok) return null;
-    const payload = await response.json();
-    const score = Number(payload.score);
-    if (!Number.isFinite(score)) return null;
-
-    const threshold = Number(payload.threshold || state.voiceMatchThreshold);
-    const speaker = resolveVoiceSpeaker(score, threshold);
-    state.lastVoiceMatch = { speaker, score, threshold };
-    return { speaker, score, threshold };
-  } catch {
-    return null;
-  }
-}
-
-function hasIdentityFramesForSegments(segments) {
-  if (!state.voiceCalibration) return true;
-  const frames = state.speakerIdentityFrames;
-  if (frames.length === 0) return false;
-  const starts = segments.map((segment) => segment.start).filter(Number.isFinite);
-  const ends = segments.map((segment) => segment.end).filter(Number.isFinite);
-  if (starts.length === 0 || ends.length === 0) return frames.length > 0;
-  const start = Math.min(...starts);
-  const end = Math.max(...ends);
-  return frames.some((frame) => frame.end >= start - 0.8 && frame.start <= end + 0.8);
-}
-
-function splitSegmentsByResolvedSpeaker(segments) {
-  const chunks = [];
-  let activeSpeaker = null;
-  let pendingSwitch = null;
-  let lastSourceSpeaker = null;
-
-  segments.forEach((segment) => {
-    const words = Array.isArray(segment.words) && segment.words.length > 0
-      ? segment.words
-      : [{ text: segment.text, speaker: segment.speaker, start: segment.start, end: segment.end }];
-
-    words.forEach((word) => {
-      const text = String(word.text || "").trim();
-      if (!text) return;
-      const evidence = getWordSpeakerEvidence(word, segment);
-      const sourceSpeaker = word.speaker || segment.speaker || "unknown";
-      const sourceSpeakerChanged = lastSourceSpeaker !== null && sourceSpeaker !== lastSourceSpeaker;
-      lastSourceSpeaker = sourceSpeaker;
-
-      if (!activeSpeaker) {
-        activeSpeaker = evidence.speaker;
-        addResolvedWordToChunks(chunks, text, evidence, segment);
-        return;
-      }
-
-      if (shouldSwitchImmediately(evidence, activeSpeaker, sourceSpeakerChanged)) {
-        flushPendingSwitch(chunks, pendingSwitch, activeSpeaker, segment);
-        pendingSwitch = null;
-        activeSpeaker = evidence.speaker;
-        addResolvedWordToChunks(chunks, text, evidence, segment);
-        return;
-      }
-
-      if (evidence.speaker === activeSpeaker || !isConfidentSpeakerEvidence(evidence)) {
-        flushPendingSwitch(chunks, pendingSwitch, activeSpeaker, segment);
-        pendingSwitch = null;
-        addResolvedWordToChunks(chunks, text, { ...evidence, speaker: activeSpeaker }, segment);
-        return;
-      }
-
-      pendingSwitch = addPendingSwitchWord(pendingSwitch, text, evidence, segment);
-      if (pendingSwitch.words.length >= state.speakerSwitchWords) {
-        activeSpeaker = pendingSwitch.speaker;
-        flushPendingSwitch(chunks, pendingSwitch, activeSpeaker, segment);
-        pendingSwitch = null;
-      }
-    });
-  });
-
-  flushPendingSwitch(chunks, pendingSwitch, activeSpeaker || "them", segments[segments.length - 1]);
-  return chunks;
-}
-
-function addResolvedWordToChunks(chunks, text, evidence, segment) {
-  const last = chunks[chunks.length - 1];
-  if (last && last.speaker === evidence.speaker) {
-    last.text = `${last.text} ${text}`.trim();
-    last.score = chooseScore(last.score, evidence.score);
-    last.threshold = evidence.threshold ?? last.threshold;
-    return;
-  }
-  chunks.push({
-    speaker: evidence.speaker,
-    text,
-    cluster: segment.speaker,
-    score: evidence.score,
-    threshold: evidence.threshold
-  });
-}
-
-function addPendingSwitchWord(pending, text, evidence, segment) {
-  if (!pending || pending.speaker !== evidence.speaker) {
-    return {
-      speaker: evidence.speaker,
-      words: [{ text, evidence, segment }]
-    };
-  }
-  pending.words.push({ text, evidence, segment });
-  return pending;
-}
-
-function flushPendingSwitch(chunks, pending, speaker, fallbackSegment) {
-  if (!pending) return;
-  pending.words.forEach((item) => {
-    addResolvedWordToChunks(
-      chunks,
-      item.text,
-      { ...item.evidence, speaker },
-      item.segment || fallbackSegment
-    );
-  });
-}
-
-function getWordSpeakerEvidence(word, segment) {
-  const voiceMatch = matchTimeRangeToCalibratedVoice(word.start ?? segment.start, word.end ?? segment.end);
-  if (voiceMatch) return voiceMatch;
-  // No voiceprint evidence: trust the diarizer's speaker cluster, mapped to
-  // Me/Them by the first-speaker rule (correctable with the Swap button).
-  return {
-    speaker: labelForCluster(word.speaker || segment.speaker),
-    score: null,
-    threshold: null
-  };
 }
 
 function registerCluster(cluster) {
@@ -1007,305 +753,6 @@ function swapMeThem() {
   render();
 }
 
-function matchTimeRangeToCalibratedVoice(start, end) {
-  if (!state.voiceCalibration || !Number.isFinite(start) || !Number.isFinite(end)) return null;
-  const frames = state.speakerIdentityFrames;
-  if (frames.length === 0) return null;
-  const midpoint = (start + end) / 2;
-  let bestFrame = null;
-  let bestDistance = Infinity;
-
-  frames.forEach((frame) => {
-    const frameMidpoint = (frame.start + frame.end) / 2;
-    const distance = Math.abs(frameMidpoint - midpoint);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestFrame = frame;
-    }
-  });
-
-  if (!bestFrame || bestDistance > 1.4 || typeof bestFrame.score !== "number") return null;
-  const threshold = Number(bestFrame.threshold || state.voiceMatchThreshold);
-  return {
-    speaker: resolveVoiceSpeaker(bestFrame.score, threshold),
-    score: bestFrame.score,
-    threshold
-  };
-}
-
-function isConfidentSpeakerEvidence(evidence) {
-  if (typeof evidence.score !== "number" || typeof evidence.threshold !== "number") return true;
-  return Math.abs(evidence.score - evidence.threshold) >= state.speakerSwitchMargin;
-}
-
-function shouldSwitchImmediately(evidence, activeSpeaker, sourceSpeakerChanged) {
-  if (evidence.speaker === activeSpeaker) return false;
-  if (sourceSpeakerChanged) return true;
-  if (typeof evidence.score !== "number" || typeof evidence.threshold !== "number") return false;
-  return Math.abs(evidence.score - evidence.threshold) >= state.speakerImmediateSwitchMargin;
-}
-
-function chooseScore(existingScore, nextScore) {
-  if (typeof existingScore !== "number") return typeof nextScore === "number" ? nextScore : null;
-  if (typeof nextScore !== "number") return existingScore;
-  return nextScore;
-}
-
-function formatScore(score, threshold) {
-  if (typeof score !== "number") return "";
-  const thresholdText = typeof threshold === "number" ? `/${threshold.toFixed(2)}` : "";
-  return ` (${getSpeakerIdLabel()} ${score.toFixed(2)}${thresholdText})`;
-}
-
-function getSpeakerIdLabel() {
-  return "SpeechBrain";
-}
-
-async function calibrateMyVoice() {
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-    state.lastSuggestion = "This browser cannot record calibration audio. Try Chrome or Edge.";
-    render();
-    return;
-  }
-
-  if (state.voiceCalibrating) return;
-  state.voiceCalibrating = true;
-  state.lastSuggestion = "Voice calibration started. Speak naturally for about 15 seconds.";
-  render();
-
-  try {
-    const wavBlob = await recordWavFromMicrophone(15000);
-    const formData = new FormData();
-    formData.append("audio", wavBlob, "me.wav");
-
-    const response = await fetch("/api/speaker-id/enroll", {
-      method: "POST",
-      body: formData
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Voice calibration failed.");
-
-    state.voiceCalibration = {
-      backend: payload.backend || "speaker ID",
-      model: payload.model || null,
-      createdAt: new Date().toISOString()
-    };
-    state.voiceMatchThreshold = Number(payload.threshold || state.voiceMatchThreshold);
-
-    const check = await verifyCalibrationAudio(wavBlob);
-    if (check && typeof check.score === "number") {
-      state.lastVoiceMatch = check;
-      if (check.score < state.voiceMatchThreshold) {
-        throw new Error(`Calibration captured, but the self-check was low (${check.score.toFixed(2)}). Try again closer to the mic.`);
-      }
-    }
-
-    state.lastSuggestion = `Voice calibrated. ${getSpeakerIdLabel()} will label matching voice as Me and other voices as Them.`;
-    if (state.diarizeStream && !state.speakerIdentityCapture) {
-      state.speakerIdentityCapture = startSpeakerIdentityCapture(state.diarizeStream);
-    }
-  } catch (error) {
-    state.lastSuggestion = error.message || "Voice calibration failed.";
-    state.voiceCalibration = null;
-  } finally {
-    state.voiceCalibrating = false;
-    render();
-  }
-}
-
-async function verifyCalibrationAudio(wavBlob) {
-  const formData = new FormData();
-  formData.append("audio", wavBlob, "check.wav");
-  const response = await fetch("/api/speaker-id/verify", {
-    method: "POST",
-    body: formData
-  });
-  if (!response.ok) return null;
-  const payload = await response.json();
-  const score = Number(payload.score);
-  const threshold = Number(payload.threshold || state.voiceMatchThreshold);
-  return {
-    speaker: resolveVoiceSpeaker(score, threshold) || payload.speaker || "me",
-    score,
-    threshold
-  };
-}
-
-async function clearVoiceCalibration() {
-  try {
-    await fetch("/api/speaker-id/clear", { method: "POST" });
-  } catch {
-    // Local state is still cleared even if the worker was already gone.
-  }
-  state.voiceCalibration = null;
-  state.lastVoiceMatch = null;
-  state.speakerIdentityFrames = [];
-  state.lastSuggestion = "Voice calibration cleared.";
-  render();
-}
-
-async function recordWavFromMicrophone(durationMs) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  try {
-    const audioBlob = await recordAudioBlob(stream, durationMs);
-    return await decodeAudioBlobToWav(audioBlob, {
-      minSeconds: 4,
-      minRms: 0.006,
-      tooQuietMessage: "I did not hear enough clear speech to enroll your voice."
-    });
-  } finally {
-    stream.getTracks().forEach((track) => track.stop());
-  }
-}
-
-function startSpeakerIdentityCapture(stream) {
-  const captureStream = new MediaStream(stream.getAudioTracks().map((track) => track.clone()));
-  let stopped = false;
-
-  const captureOnce = async () => {
-    if (stopped || !state.active || state.paused || !state.voiceCalibration || state.speakerIdentityPending) return;
-    state.speakerIdentityPending = true;
-    const start = Math.max(0, (performance.now() - state.diarizeStreamStartedAt) / 1000);
-    try {
-      const audioBlob = await recordAudioBlob(captureStream, 1400);
-      const wavBlob = await decodeAudioBlobToWav(audioBlob, {
-        minSeconds: 1,
-        minRms: 0.003,
-        tooQuietMessage: "quiet"
-      });
-      const end = Math.max(start, (performance.now() - state.diarizeStreamStartedAt) / 1000);
-      await sendSpeakerIdentityChunk(wavBlob, start, end);
-    } catch (error) {
-      if (error.code !== "QUIET_AUDIO") {
-        console.warn("Speaker identity capture failed:", error);
-      }
-    } finally {
-      state.speakerIdentityPending = false;
-    }
-  };
-
-  const timer = window.setInterval(captureOnce, 950);
-  captureOnce();
-
-  return {
-    stop() {
-      stopped = true;
-      window.clearInterval(timer);
-      captureStream.getTracks().forEach((track) => track.stop());
-    }
-  };
-}
-
-function recordAudioBlob(stream, durationMs) {
-  return new Promise((resolve, reject) => {
-    const recorder = new MediaRecorder(stream, getRecorderOptions());
-    const chunks = [];
-    recorder.ondataavailable = (event) => {
-      if (event.data?.size > 0) chunks.push(event.data);
-    };
-    recorder.onerror = () => reject(new Error("Audio recording failed."));
-    recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
-    recorder.start();
-    window.setTimeout(() => {
-      if (recorder.state !== "inactive") recorder.stop();
-    }, durationMs);
-  });
-}
-
-async function decodeAudioBlobToWav(audioBlob, options = {}) {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) throw new Error("Audio decoding is not available in this browser.");
-  const arrayBuffer = await audioBlob.arrayBuffer();
-  const context = new AudioContextClass();
-  try {
-    const audioBuffer = await context.decodeAudioData(arrayBuffer);
-    const minSeconds = options.minSeconds || 1;
-    if (audioBuffer.duration < minSeconds) {
-      const error = new Error(options.tooQuietMessage || "Not enough speech captured.");
-      error.code = "QUIET_AUDIO";
-      throw error;
-    }
-    const channel = audioBuffer.getChannelData(0);
-    const rms = getRms(channel);
-    if (rms < (options.minRms || 0.003)) {
-      const error = new Error(options.tooQuietMessage || "Audio was too quiet.");
-      error.code = "QUIET_AUDIO";
-      throw error;
-    }
-    return encodeWav(channel, audioBuffer.sampleRate);
-  } finally {
-    context.close?.();
-  }
-}
-
-function getRms(samples) {
-  if (!samples.length) return 0;
-  let sum = 0;
-  for (let index = 0; index < samples.length; index += 1) {
-    sum += samples[index] * samples[index];
-  }
-  return Math.sqrt(sum / samples.length);
-}
-
-async function sendSpeakerIdentityChunk(wavBlob, start, end) {
-  const formData = new FormData();
-  formData.append("audio", wavBlob, "speaker.wav");
-
-  const response = await fetch("/api/speaker-id/verify", {
-    method: "POST",
-    body: formData
-  });
-  if (!response.ok) return;
-  const payload = await response.json();
-  const score = Number(payload.score);
-  const threshold = Number(payload.threshold || state.voiceMatchThreshold);
-  if (!Number.isFinite(score)) return;
-
-  const frame = {
-    start,
-    end,
-    speaker: resolveVoiceSpeaker(score, threshold),
-    score,
-    threshold
-  };
-  state.speakerIdentityFrames.push(frame);
-  state.speakerIdentityFrames = state.speakerIdentityFrames.slice(-120);
-  state.lastVoiceMatch = frame;
-  render();
-}
-
-function encodeWav(samples, sampleRate) {
-  const buffer = new ArrayBuffer(44 + samples.length * 2);
-  const view = new DataView(buffer);
-  writeAscii(view, 0, "RIFF");
-  view.setUint32(4, 36 + samples.length * 2, true);
-  writeAscii(view, 8, "WAVE");
-  writeAscii(view, 12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeAscii(view, 36, "data");
-  view.setUint32(40, samples.length * 2, true);
-
-  let offset = 44;
-  for (let index = 0; index < samples.length; index += 1) {
-    const sample = Math.max(-1, Math.min(1, samples[index]));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-    offset += 2;
-  }
-  return new Blob([view], { type: "audio/wav" });
-}
-
-function writeAscii(view, offset, text) {
-  for (let index = 0; index < text.length; index += 1) {
-    view.setUint8(offset + index, text.charCodeAt(index));
-  }
-}
-
 function containsWakeWord(text) {
   return text.toLowerCase().includes(state.wakeWord.toLowerCase());
 }
@@ -1314,17 +761,6 @@ function normalizeSpeaker(value) {
   if (value === "unknown") return "unknown";
   if (value === "them") return "them";
   return "me";
-}
-
-function resolveVoiceSpeaker(score, threshold) {
-  if (!Number.isFinite(score) || !Number.isFinite(threshold)) return null;
-  if (Math.abs(score - threshold) < state.voiceUncertainMargin) return null;
-  return score >= threshold ? "me" : "them";
-}
-
-function getVoiceMatchLabel(speaker) {
-  if (speaker === "me" || speaker === "them") return getSpeakerLabel(speaker);
-  return "Unknown";
 }
 
 function getSpeakerLabel(speaker) {
@@ -1725,7 +1161,6 @@ function deleteSessionData() {
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
-  state.speakerIdentityFrames = [];
   state.pendingStreamingFinalKeys.clear();
   elements.partnerInput.value = "";
   elements.goalInput.value = "";
@@ -1787,9 +1222,6 @@ function stopDiarizedTranscription() {
   state.diarizeSocket = null;
   state.lastStreamingFinalText = "";
   state.pendingStreamingFinalKeys.clear();
-  state.speakerIdentityCapture?.stop();
-  state.speakerIdentityCapture = null;
-  state.speakerIdentityFrames = [];
   state.pendingTranscriptionChunks = 0;
 }
 
@@ -1808,12 +1240,6 @@ elements.speakerModeInput.addEventListener("change", () => {
   state.speakerMode = normalizeSpeakerMode(elements.speakerModeInput.value);
   render();
 });
-if (elements.calibrateVoiceButton) {
-  elements.calibrateVoiceButton.addEventListener("click", calibrateMyVoice);
-}
-if (elements.clearVoiceCalibrationButton) {
-  elements.clearVoiceCalibrationButton.addEventListener("click", clearVoiceCalibration);
-}
 if (elements.swapSpeakerButton) {
   elements.swapSpeakerButton.addEventListener("click", swapMeThem);
 }

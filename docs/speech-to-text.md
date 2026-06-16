@@ -40,7 +40,7 @@ Me: I wanted to ask about the deadline.
 Them: I do not think we can move it.
 ```
 
-This is source separation, not voiceprint identification. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately.
+This is source separation, not speaker diarization. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately.
 
 ## One-Mic Diarization
 
@@ -63,43 +63,14 @@ AssemblyAI is the sole speaker source. The first speaker EarBud hears is labeled
 
 ## Short / Unattributed Turns
 
-AssemblyAI cannot attribute turns shorter than about one second (single-word replies, cold start), and returns those as `UNKNOWN`. EarBud never shows `Unknown`: such turns are resolved with a fallback chain so every line is `Me` or `Them`.
+AssemblyAI cannot attribute turns shorter than about one second (single-word replies, cold start), and returns those as `UNKNOWN`. EarBud never shows `Unknown`: such turns are resolved with a turn-taking guess so every line is `Me` or `Them`.
 
-1. If the user has calibrated a voiceprint, the turn's exact audio is sliced from a rolling buffer (padded to ~1.2s) and verified against the enrolled voice.
-2. If the clip is still too short or the score is near the threshold, EarBud applies a turn-taking guess: a short reply is assumed to come from the other person than whoever just held the floor.
-3. With no context yet, it defaults to `Me`.
+1. A short reply is assumed to come from the other person than whoever just held the floor.
+2. With no context yet, it defaults to `Me`.
 
-Confident turns always come straight from AssemblyAI; the voiceprint is used **only** for these short/uncertain turns.
+Confident turns always come straight from AssemblyAI; the turn-taking guess is used **only** for these short/uncertain turns.
 
-## Voice Verification
-
-The voiceprint is optional and improves only the short-turn case above. The user taps **Calibrate my voice** once and speaks naturally for about 15 seconds. The browser records microphone audio, decodes it locally to WAV, and posts it to:
-
-```text
-POST /api/speaker-id/enroll
-```
-
-The backend pipes the audio to a persistent local SpeechBrain Python worker ([tools/speaker_verify.py](../tools/speaker_verify.py)), which computes a speaker embedding and stores it as the enrolled `Me` voiceprint. Everything runs on-device; nothing is sent to a cloud speaker-ID API.
-
-For short turns, EarBud slices that turn's audio and posts it to:
-
-```text
-POST /api/speaker-id/verify
-```
-
-The worker returns a cosine-similarity score against the enrolled voiceprint. Scores at or above the configured threshold are `Me`; lower scores are `Them`; near-threshold scores fall through to the turn-taking guess.
-
-### Engine And Setup
-
-The worker is launched with `SPEAKER_PYTHON`. Install the dependencies from [requirements-speaker-id.txt](../requirements-speaker-id.txt) into that interpreter:
-
-```text
-npm run setup:speaker-id
-```
-
-The process is spawned lazily on the first calibration. If Python or the dependencies are missing, calibration returns a clear error and one-mic mode keeps working (short turns fall back to the turn-taking guess).
-
-This relies on AssemblyAI for live words, timing, and the main speaker split, and on the local SpeechBrain worker only to resolve short turns. Diarization can still struggle with heavy overlap, single-word interjections, or noisy rooms.
+This relies on AssemblyAI for live words, timing, and the main speaker split. Diarization can still struggle with heavy overlap, single-word interjections, or noisy rooms.
 
 ## Speaker Labels
 
@@ -110,7 +81,7 @@ EarBud currently uses two speaker labels:
 - `Me`: the EarBud user.
 - `Them`: the conversation partner or other person.
 
-In one-mic mode these labels come from AssemblyAI's speaker split (first speaker = `Me`), with short turns resolved by the local voiceprint or turn-taking fallback. In manual mode, live microphone transcription defaults to `Me`, but the user can change the live mic speaker selector before speaking. Typed transcript input also has a speaker selector so test conversations can include both sides.
+In one-mic mode these labels come from AssemblyAI's speaker split (first speaker = `Me`), with short turns resolved by a turn-taking fallback. In manual mode, live microphone transcription defaults to `Me`, but the user can change the live mic speaker selector before speaking. Typed transcript input also has a speaker selector so test conversations can include both sides.
 
 These labels are sent to the coach so suggestions are aimed at what `Me` should say or do next, based on the user's stated objective and what `Them` has said.
 

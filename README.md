@@ -88,7 +88,7 @@ This repo includes a browser-based prototype and a Node backend agent:
 - Conversation objective setup.
 - Browser speech recognition when supported by the browser.
 - Speaker-labeled transcripts for `Me` and `Them`.
-- One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`, with an optional local voiceprint to resolve short turns.
+- One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`, with a turn-taking guess for short unattributed replies.
 - Automatic call mode where microphone audio is `Me` and shared tab/system audio is `Them`.
 - Typed transcript fallback for testing.
 - Backend coaching suggestions.
@@ -100,7 +100,7 @@ This repo includes a browser-based prototype and a Node backend agent:
 
 After the codeword is spoken, EarBud continues listening and evaluates the conversation for useful advice until the codeword is spoken again.
 
-For one mixed microphone (in-person, AirPods-style), EarBud uses AssemblyAI streaming diarization (set `ASSEMBLYAI_API_KEY`). The first speaker is labeled `Me` and other voices `Them` (tap Swap if reversed); short, unattributed replies are resolved by an optional local voiceprint or a turn-taking guess. For online calls, choose call mode instead, allow microphone access for `Me`, then share the call tab/window with audio for `Them`.
+For one mixed microphone (in-person, AirPods-style), EarBud uses AssemblyAI streaming diarization (set `ASSEMBLYAI_API_KEY`). The first speaker is labeled `Me` and other voices `Them` (tap Swap if reversed); short, unattributed replies are resolved by a turn-taking guess. For online calls, choose call mode instead, allow microphone access for `Me`, then share the call tab/window with audio for `Them`.
 
 ## Run Locally
 
@@ -134,7 +134,7 @@ The app is intended to run locally on your machine. Do not expose the local serv
 
 Gemini's free tier is enough for local testing, but it is rate-limited and Google may use free-tier inputs to improve its products. Check the current Gemini pricing and billing docs before using sensitive data or sharing the app with other users.
 
-For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`). To improve short single-word turns, optionally run `npm run setup:speaker-id` and calibrate your voice; the local SpeechBrain worker then resolves those short turns against your voiceprint.
+For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`). Short, unattributed single-word turns fall back to a turn-taking guess, and you can tap Swap if `Me` / `Them` end up reversed.
 
 ## Important Privacy Note
 
