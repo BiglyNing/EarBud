@@ -22,10 +22,10 @@
             Conversation partner
             <input id="partnerInput" type="text" placeholder="Jordan" autocomplete="off">
           </label>
-          <label>
-            Objective
-            <textarea id="goalInput" rows="4" placeholder="Get agreement on a project deadline extension while staying confident."></textarea>
-          </label>
+          <div class="objective-display" id="objectiveDisplay">
+            <span class="meta-label">Objective</span>
+            <strong>Start the session, then say your objective out loud — your first words set the goal.</strong>
+          </div>
           <label>
             Tone
             <select id="toneInput">
@@ -70,6 +70,10 @@
           <div>
             <span class="meta-label">State</span>
             <strong id="conversationState">Setup</strong>
+          </div>
+          <div>
+            <span class="meta-label">Lens</span>
+            <strong id="coachLens">—</strong>
           </div>
           <div>
             <span class="meta-label">Last action</span>

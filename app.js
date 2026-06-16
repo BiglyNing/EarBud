@@ -24,8 +24,10 @@ const state = {
   dismissedSuggestions: [],
   review: "End a session to generate a local review.",
   lastAction: "None",
-  lastSuggestion: "Set an objective to begin.",
+  lastSuggestion: "Start a session, then say your objective out loud.",
   currentSuggestion: "",
+  lastLens: "None",
+  awaitingObjective: false,
   spokenSuggestions: false,
   speechFrequency: "important",
   speechVolume: 0.7,
@@ -44,8 +46,8 @@ const state = {
   pendingTranscriptionChunks: 0,
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
-  lastStreamingFinalText: "",
-  committedTurns: new Set(),
+  lastTurn: null,
+  objectiveNorm: "",
   meClusterId: null,
   knownClusters: [],
   diarizePcm: null,
@@ -60,7 +62,7 @@ const state = {
 const elements = {
   goalForm: document.querySelector("#goalForm"),
   partnerInput: document.querySelector("#partnerInput"),
-  goalInput: document.querySelector("#goalInput"),
+  objectiveDisplay: document.querySelector("#objectiveDisplay"),
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
   speakerModeInput: document.querySelector("#speakerModeInput"),
@@ -70,6 +72,7 @@ const elements = {
   phaseChip: document.querySelector("#phaseChip"),
   suggestionBox: document.querySelector("#suggestionBox"),
   conversationState: document.querySelector("#conversationState"),
+  coachLens: document.querySelector("#coachLens"),
   lastAction: document.querySelector("#lastAction"),
   pauseButton: document.querySelector("#pauseButton"),
   acceptButton: document.querySelector("#acceptButton"),
@@ -113,7 +116,11 @@ function render() {
       ? "Coaching On"
       : state.phase;
   elements.suggestionBox.textContent = state.lastSuggestion;
+  renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
+  if (elements.coachLens) {
+    elements.coachLens.textContent = state.lastLens && state.lastLens !== "None" ? state.lastLens : "—";
+  }
   elements.lastAction.textContent = state.lastAction;
   elements.reviewBox.textContent = state.review;
   elements.liveTranscript.textContent = state.liveTranscript;
@@ -212,7 +219,8 @@ function startSession(event) {
   event.preventDefault();
 
   state.partner = elements.partnerInput.value.trim() || "this person";
-  state.goal = elements.goalInput.value.trim() || "move the conversation toward a clear next step";
+  state.goal = "";
+  state.awaitingObjective = true;
   state.tone = elements.toneInput.value;
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
   state.speakerMode = normalizeSpeakerMode(elements.speakerModeInput.value);
@@ -223,21 +231,22 @@ function startSession(event) {
   state.phase = "Listening";
   state.conversationState = "Listening";
   state.transcript = [];
-  state.liveTranscript = "Listening for speech...";
+  state.liveTranscript = "Listening for your objective — say it out loud now.";
   state.followUps = [];
   state.acceptedSuggestions = [];
   state.dismissedSuggestions = [];
   state.review = "Session in progress. End the session to generate a local review.";
   state.lastAction = "Session started";
   state.currentSuggestion = "";
+  state.lastLens = "None";
   state.lastCoachRequestAt = 0;
-  state.committedTurns.clear();
-  state.lastStreamingFinalText = "";
+  state.lastTurn = null;
+  state.objectiveNorm = "";
   state.meClusterId = null;
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
   state.lastConfidentSpeaker = null;
-  state.lastSuggestion = `Listening locally. Say "${state.wakeWord}" to turn active coaching on. Say it again to turn coaching off.`;
+  state.lastSuggestion = `Say your objective out loud — your first words set the goal. Then say "${state.wakeWord}" to turn active coaching on.`;
 
   if (state.speakerMode === "source") {
     startSourceSeparatedTranscription();
@@ -247,6 +256,19 @@ function startSession(event) {
     startContinuousListening();
   }
   render();
+}
+
+function renderObjectiveDisplay() {
+  if (!elements.objectiveDisplay) return;
+  const value = elements.objectiveDisplay.querySelector("strong");
+  if (!value) return;
+  if (state.goal) {
+    value.textContent = state.goal;
+  } else if (state.awaitingObjective) {
+    value.textContent = "Listening for your objective — say it out loud now.";
+  } else {
+    value.textContent = "Start the session, then say your objective out loud — your first words set the goal.";
+  }
 }
 
 function renderBackendStatus() {
@@ -290,6 +312,14 @@ function normalizeWakeWord(value) {
 function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   const cleanText = text.trim();
   if (!cleanText || !state.active || state.paused) return;
+
+  // The first chunk after starting a session is the spoken objective, not a
+  // conversation line — capture it as the goal and stop here.
+  if (state.awaitingObjective) {
+    setSpokenObjective(cleanText);
+    return;
+  }
+
   const normalizedSpeaker = normalizeSpeaker(speaker);
   state.liveTranscript = `Final (${getSpeakerLabel(normalizedSpeaker)}): ${cleanText}`;
 
@@ -310,6 +340,13 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
     return line;
   }
 
+  // Earlier runs of a multi-speaker turn defer to the turn's last line so the
+  // coach reacts once, to the newest content.
+  if (metadata.deferCoaching) {
+    render();
+    return line;
+  }
+
   if (state.coachingActive) {
     maybeRequestAgentSuggestion(line);
   } else {
@@ -321,6 +358,17 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
 
   render();
   return line;
+}
+
+// Capture the first spoken chunk of a session as the objective instead of a
+// transcript line. Coaching still waits for the codeword.
+function setSpokenObjective(text) {
+  state.goal = text;
+  state.awaitingObjective = false;
+  state.lastAction = "Objective set";
+  state.liveTranscript = `Objective set: ${text}`;
+  state.lastSuggestion = `Objective set: "${text}". Say "${state.wakeWord}" to turn active coaching on.`;
+  render();
 }
 
 async function startSourceSeparatedTranscription() {
@@ -688,68 +736,89 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
   }
 }
 
-// Each final turn is committed exactly once, identified by AssemblyAI's
-// turn_order. format_turns sends an unformatted final then a formatted final
-// for the same turn; the first commits the line, the second upgrades that same
-// line's text in place — so we never duplicate a turn or drop its continuation.
+// A final turn is committed once as one line per speaker run. AssemblyAI sends
+// an unformatted final then a formatted final for the same turn (sometimes
+// under the same turn_order, sometimes a bumped/absent one), so we recognise the
+// re-emission by turn_order or by matching the same words, and upgrade the
+// existing line(s) in place instead of repeating the phrase.
 function commitFinalStreamingSegments(segments, meta = {}) {
   const turnOrder = Number.isInteger(meta.turnOrder) ? meta.turnOrder : null;
+  const text = segments.map((segment) => segment.text).join(" ").trim();
+  const norm = normalizeTurnText(text);
+  if (!norm) return;
 
-  if (turnOrder === null) {
-    // Fallback when the provider gives no turn id: dedup by text so a re-emitted
-    // final is not added twice.
-    const finalKey = segments.map((segment) => `${segment.cluster}:${segment.text}`).join("|");
-    if (!finalKey || finalKey === state.lastStreamingFinalText) return;
-    state.lastStreamingFinalText = finalKey;
-    addCommittedTurnLines(segments, null);
+  // First chunk of the session is the spoken objective, not a transcript line.
+  // Remember its words so the formatted re-emission is swallowed, not committed.
+  if (state.awaitingObjective) {
+    setSpokenObjective(text);
+    state.objectiveNorm = norm;
+    state.lastTurn = { order: turnOrder, norm, lines: [] };
+    return;
+  }
+  if (state.objectiveNorm && norm === state.objectiveNorm) {
+    state.objectiveNorm = "";
     return;
   }
 
-  if (state.committedTurns.has(turnOrder)) {
-    updateCommittedTurn(turnOrder, segments);
+  // Re-emission of the turn we just committed → upgrade its line(s) in place.
+  // Speaker runs are stable between the unformatted and formatted passes, so
+  // only the text changes.
+  const last = state.lastTurn;
+  const isReemission = Boolean(last)
+    && ((turnOrder !== null && turnOrder === last.order) || norm === last.norm);
+  if (isReemission) {
+    if (last.lines.length === segments.length) {
+      segments.forEach((segment, index) => {
+        const line = last.lines[index];
+        if (!line) return;
+        line.text = segment.text;
+        line.codeword = containsWakeWord(segment.text);
+      });
+      last.norm = norm;
+      last.order = turnOrder ?? last.order;
+      render();
+    }
+    // If the run count changed (rare), keep the first commit to avoid dupes.
     return;
   }
-  state.committedTurns.add(turnOrder);
-  addCommittedTurnLines(segments, turnOrder);
+
+  const lines = appendTurnLines(segments, turnOrder);
+  state.lastTurn = { order: turnOrder, norm, lines };
 }
 
-function addCommittedTurnLines(segments, turnOrder) {
-  for (const segment of segments) {
-    let speaker;
+// Lowercase, strip punctuation/spacing so an unformatted final ("hello there")
+// and its formatted re-emission ("Hello there.") compare as the same turn.
+function normalizeTurnText(text) {
+  return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
 
+// Add one transcript line per speaker run. Coaching is evaluated once, on the
+// turn's last (newest) line, so a multi-speaker turn does not fire repeatedly.
+function appendTurnLines(segments, turnOrder) {
+  const lines = [];
+  segments.forEach((segment, index) => {
+    let speaker;
     if (!segment.uncertain) {
-      // Confident turn: AssemblyAI decides (first cluster = Me).
+      // Confident run: AssemblyAI's cluster decides (first cluster = Me).
       speaker = segment.speaker === "them" ? "them" : "me";
       state.lastConfidentSpeaker = speaker;
     } else {
-      // Short / unattributed turn: a turn-taking guess (a short reply is
-      // usually the other person).
+      // Provisional run: a turn-taking guess (a short reply is usually the
+      // other person).
       speaker = guessShortTurnSpeaker();
     }
 
     state.lastDiarizedSpeaker = speaker;
-    addTranscriptLine(segment.text, speaker, {
-      // Uncertain turns carry no cluster, so Swap (which re-maps by cluster)
+    const line = addTranscriptLine(segment.text, speaker, {
+      // Uncertain runs carry no cluster, so Swap (which re-maps by cluster)
       // leaves their heuristic decision intact.
       cluster: segment.uncertain ? null : segment.cluster,
-      turnOrder
+      turnOrder,
+      deferCoaching: index < segments.length - 1
     });
-  }
-}
-
-// Replace the text of an already-committed turn with its formatted version,
-// without re-running coaching or wake-word toggling for the same words.
-function updateCommittedTurn(turnOrder, segments) {
-  const text = segments.map((segment) => segment.text).join(" ").trim();
-  if (!text) return;
-  for (let index = state.transcript.length - 1; index >= 0; index -= 1) {
-    if (state.transcript[index].turnOrder === turnOrder) {
-      state.transcript[index].text = text;
-      state.transcript[index].codeword = containsWakeWord(text);
-      break;
-    }
-  }
-  render();
+    if (line) lines.push(line);
+  });
+  return lines;
 }
 
 // A short reply usually comes from the other person than whoever just held the
@@ -898,6 +967,7 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
 function applyCoachPayload(payload, notice = "") {
   state.phase = payload.phase || "Guiding";
   state.conversationState = payload.state || payload.phase || "Guiding";
+  state.lastLens = typeof payload.lens === "string" && payload.lens.trim() ? payload.lens.trim() : "None";
   const suggestion = payload.suggestion || "Stay quiet for now and keep listening for the next useful opening.";
   state.lastSuggestion = notice ? `${notice} ${suggestion}` : suggestion;
   state.currentSuggestion = payload.shouldChimeIn === false ? "" : suggestion;
@@ -916,7 +986,8 @@ function createLocalCoachPayload(line) {
       state: "Objection",
       shouldChimeIn: true,
       suggestion: "Label the concern, then ask what condition would make progress possible.",
-      followUp: `Tie the next question back to: ${state.goal || "your objective"}`
+      followUp: `Tie the next question back to: ${state.goal || "your objective"}`,
+      lens: "Never Split the Difference"
     };
   }
 
@@ -926,7 +997,8 @@ function createLocalCoachPayload(line) {
       state: "Ask",
       shouldChimeIn: true,
       suggestion: "Ask one calm question that connects their last point to your objective.",
-      followUp: `Objective: ${state.goal || "move the conversation forward"}`
+      followUp: `Objective: ${state.goal || "move the conversation forward"}`,
+      lens: "Never Split the Difference"
     };
   }
 
@@ -935,7 +1007,8 @@ function createLocalCoachPayload(line) {
     state: "Listen",
     shouldChimeIn: false,
     suggestion: "Pause and listen for their real constraint before pushing the objective further.",
-    followUp: null
+    followUp: null,
+    lens: "Deep Work"
   };
 }
 
@@ -1199,12 +1272,13 @@ function deleteSessionData() {
   state.requestingAgent = false;
   state.partner = "";
   state.goal = "";
+  state.awaitingObjective = false;
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
-  state.committedTurns.clear();
+  state.lastTurn = null;
+  state.objectiveNorm = "";
   elements.partnerInput.value = "";
-  elements.goalInput.value = "";
   elements.liveSpeakerInput.value = "me";
   elements.manualSpeakerInput.value = "me";
   elements.speakerModeInput.value = "manual";
@@ -1219,6 +1293,7 @@ function deleteSessionData() {
   state.lastAction = "Deleted";
   state.lastSuggestion = "Local session data deleted. Set a new objective to begin.";
   state.currentSuggestion = "";
+  state.lastLens = "None";
   state.lastCoachRequestAt = 0;
   render();
 }
@@ -1261,8 +1336,8 @@ function stopDiarizedTranscription() {
   state.diarizeRecorder = null;
   state.diarizeStream = null;
   state.diarizeSocket = null;
-  state.lastStreamingFinalText = "";
-  state.committedTurns.clear();
+  state.lastTurn = null;
+  state.objectiveNorm = "";
   state.pendingTranscriptionChunks = 0;
 }
 

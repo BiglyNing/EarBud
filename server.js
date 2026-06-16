@@ -77,6 +77,13 @@ function connectAssemblyAiStream(clientSocket, sendClientEvent) {
   url.searchParams.set("speaker_labels", "true");
   url.searchParams.set("max_speakers", process.env.ASSEMBLYAI_MAX_SPEAKERS || "2");
   url.searchParams.set("format_turns", "true");
+  // Turn endpointing. AssemblyAI's defaults (confidence 0.4, min silence 400ms,
+  // max silence 1280ms) finalize a turn on brief pauses, cutting speakers off
+  // mid-sentence. These higher defaults make it wait longer before ending a
+  // turn so a whole thought is captured. All three are env-overridable.
+  url.searchParams.set("end_of_turn_confidence_threshold", process.env.ASSEMBLYAI_EOT_CONFIDENCE || "0.8");
+  url.searchParams.set("min_turn_silence", process.env.ASSEMBLYAI_MIN_SILENCE || "1000");
+  url.searchParams.set("max_turn_silence", process.env.ASSEMBLYAI_MAX_SILENCE || "3000");
   // Raise VAD threshold in noisy rooms to avoid false speech detection (0-1).
   if (process.env.ASSEMBLYAI_VAD_THRESHOLD) {
     url.searchParams.set("vad_threshold", process.env.ASSEMBLYAI_VAD_THRESHOLD);
@@ -120,30 +127,74 @@ function connectAssemblyAiStream(clientSocket, sendClientEvent) {
       const label = rawLabel || lastSpeakerLabel;
       if (rawLabel) lastSpeakerLabel = rawLabel;
 
-      const words = Array.isArray(payload.words)
+      // AssemblyAI labels every final word with its own speaker. Split the turn
+      // into runs of consecutive same-speaker words so a turn that spans a quick
+      // A→B exchange (which longer endpointing makes more likely) becomes
+      // separate, correctly-attributed segments instead of one blended line.
+      // A word with its own label, or any turn that AssemblyAI did attribute, is
+      // "confident"; otherwise the run is provisional and the client resolves it.
+      const enriched = Array.isArray(payload.words)
         ? payload.words.map((word) => {
-          const wordLabel = normalizeAssemblySpeakerLabel(word.speaker_label || word.speaker) || label;
+          const ownLabel = normalizeAssemblySpeakerLabel(word.speaker_label || word.speaker);
           return {
             text: String(word.text || word.word || "").trim(),
-            speaker: assemblySpeakerCluster(wordLabel),
+            cluster: assemblySpeakerCluster(ownLabel || label),
+            confident: Boolean(ownLabel) || Boolean(rawLabel),
             start: normalizeAssemblyTime(word.start),
             end: normalizeAssemblyTime(word.end)
           };
         }).filter((word) => word.text)
         : [];
-      const start = words.length ? words[0].start : null;
-      const end = words.length ? words[words.length - 1].end : null;
+
+      const segments = [];
+      for (const word of enriched) {
+        const wordEntry = { text: word.text, speaker: word.cluster, start: word.start, end: word.end };
+        const run = segments[segments.length - 1];
+        if (run && run.speaker === word.cluster && run.uncertain === !word.confident) {
+          run.words.push(wordEntry);
+          run.text = `${run.text} ${word.text}`.trim();
+          run.end = word.end;
+        } else {
+          segments.push({
+            speaker: word.cluster,
+            text: word.text,
+            start: word.start,
+            end: word.end,
+            words: [wordEntry],
+            uncertain: !word.confident
+          });
+        }
+      }
+      // No word-level speakers (e.g. partial turns) — keep the whole turn as one
+      // segment using its turn-level label.
+      if (segments.length === 0) {
+        segments.push({ speaker: assemblySpeakerCluster(label), text, start: null, end: null, words: [], uncertain });
+      }
+
+      // Very short answers ("yeah", "no") are unreliable to attribute and tend
+      // to stick to whoever just spoke. Mark them provisional so the client
+      // applies the turn-taking guess (a brief reply is usually the other
+      // person) instead of inheriting the previous speaker's label.
+      const shortTurnWords = Number(process.env.ASSEMBLYAI_SHORT_TURN_WORDS || 1);
+      if (enriched.length > 0 && enriched.length <= shortTurnWords) {
+        for (const segment of segments) segment.uncertain = true;
+      }
+
+      if (process.env.ASSEMBLYAI_DEBUG) {
+        const runs = segments.map((s) => `${s.speaker || "?"}:"${s.text}"`).join(" | ");
+        console.log(`[turn] order=${payload.turn_order} eot=${payload.end_of_turn} fmt=${payload.turn_is_formatted} runs=${runs}`);
+      }
 
       sendClientEvent({
         type: "transcript",
         isFinal: Boolean(payload.end_of_turn),
         // turn_order is AssemblyAI's stable id for the turn. format_turns emits
         // an unformatted final then a formatted final for the SAME turn_order;
-        // the client uses this to upgrade that line in place instead of
-        // duplicating it or dropping the continuation.
+        // the client uses this to upgrade the line(s) in place instead of
+        // duplicating them or dropping the continuation.
         turnOrder: Number.isInteger(payload.turn_order) ? payload.turn_order : null,
         isFormatted: Boolean(payload.turn_is_formatted),
-        segments: [{ speaker: assemblySpeakerCluster(label), text, start, end, words, uncertain }]
+        segments
       });
       return;
     }
@@ -362,10 +413,17 @@ app.post("/api/coach", async (req, res) => {
           "Every suggestion must help Me move toward the user's objective or protect the objective from being harmed.",
           "Treat Me as the EarBud user who needs advice, and Them as the person the user is talking to.",
           "Suggest what Me should say or do next; do not give advice to Them.",
-          "Use strategic awareness, positioning, negotiation, human-nature reading, execution, and focus.",
-          "Do not quote or imitate any source text. Synthesize original practical advice.",
+          "Reason through these strategic lenses and let the single most relevant one shape each suggestion:",
+          "- 48 Laws of Power: strategic awareness, incentives, status, leverage, and hidden dynamics.",
+          "- The Art of War: positioning, timing, terrain, and knowing when not to engage.",
+          "- Never Split the Difference: calibrated questions, tactical empathy, labels, mirrors, and clear asks.",
+          "- The Laws of Human Nature: motives, emotional signals, blind spots, and social patterns.",
+          "- Atomic Habits: small next actions, friction, cues, and follow-through.",
+          "- Deep Work: attention, clarity, and protecting the objective from distraction.",
+          "These are reasoning influences, not scripts: translate them into honest, situational advice and never quote or imitate their text.",
+          "Name the lens you used in the lens field, written exactly as listed above; use \"None\" only when advising to keep listening.",
           "Only chime in when advice is useful; otherwise say to keep listening.",
-          "Return structured JSON with keys: phase, state, shouldChimeIn, suggestion, followUp.",
+          "Return structured JSON with keys: phase, state, shouldChimeIn, suggestion, followUp, lens.",
           "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
           "shouldChimeIn must be a boolean.",
           "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
@@ -381,9 +439,10 @@ app.post("/api/coach", async (req, res) => {
             state: { type: Type.STRING },
             shouldChimeIn: { type: Type.BOOLEAN },
             suggestion: { type: Type.STRING },
-            followUp: { type: Type.STRING, nullable: true }
+            followUp: { type: Type.STRING, nullable: true },
+            lens: { type: Type.STRING }
           },
-          required: ["phase", "state", "shouldChimeIn", "suggestion", "followUp"]
+          required: ["phase", "state", "shouldChimeIn", "suggestion", "followUp", "lens"]
         }
       }
     });
@@ -436,7 +495,8 @@ function createLocalCoachSuggestion({ goal, latestLine, latestSpeaker, transcrip
       state: "Listen",
       shouldChimeIn: false,
       suggestion: "Keep listening for the next useful opening.",
-      followUp: null
+      followUp: null,
+      lens: "None"
     };
   }
 
@@ -453,7 +513,8 @@ function createLocalCoachSuggestion({ goal, latestLine, latestSpeaker, transcrip
       state: "Objection",
       shouldChimeIn: true,
       suggestion: "Label the concern, then ask what condition would make progress possible.",
-      followUp: `Tie the next question back to: ${objective}`
+      followUp: `Tie the next question back to: ${objective}`,
+      lens: "Never Split the Difference"
     };
   }
 
@@ -463,7 +524,8 @@ function createLocalCoachSuggestion({ goal, latestLine, latestSpeaker, transcrip
       state: "Ask",
       shouldChimeIn: true,
       suggestion: "Ask one calm question that connects their last point to your objective.",
-      followUp: `Objective: ${objective}`
+      followUp: `Objective: ${objective}`,
+      lens: "Never Split the Difference"
     };
   }
 
@@ -472,7 +534,8 @@ function createLocalCoachSuggestion({ goal, latestLine, latestSpeaker, transcrip
     state: "Listen",
     shouldChimeIn: false,
     suggestion: "Pause and listen for their real constraint before pushing the objective further.",
-    followUp: null
+    followUp: null,
+    lens: "Deep Work"
   };
 }
 
@@ -603,7 +666,8 @@ function parseAgentJson(text) {
     state: "Listen",
     shouldChimeIn: false,
     suggestion: text?.trim() || "Stay quiet for now and keep listening for the next useful opening.",
-    followUp: null
+    followUp: null,
+    lens: "None"
   };
 
   if (!text) return fallback;
@@ -618,7 +682,8 @@ function parseAgentJson(text) {
       state: typeof parsed.state === "string" ? parsed.state : fallback.state,
       shouldChimeIn: typeof parsed.shouldChimeIn === "boolean" ? parsed.shouldChimeIn : fallback.shouldChimeIn,
       suggestion: typeof parsed.suggestion === "string" ? parsed.suggestion : fallback.suggestion,
-      followUp: typeof parsed.followUp === "string" && parsed.followUp.trim() ? parsed.followUp : null
+      followUp: typeof parsed.followUp === "string" && parsed.followUp.trim() ? parsed.followUp : null,
+      lens: typeof parsed.lens === "string" && parsed.lens.trim() ? parsed.lens.trim() : "None"
     };
   } catch {
     return fallback;

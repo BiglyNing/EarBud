@@ -139,6 +139,18 @@ h2 {
   gap: 14px;
 }
 
+.objective-display {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 12px;
+}
+
+.objective-display strong {
+  display: block;
+  line-height: 1.35;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -240,7 +252,7 @@ textarea:focus {
 
 .coach-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
