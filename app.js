@@ -45,7 +45,7 @@ const state = {
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
   lastStreamingFinalText: "",
-  pendingStreamingFinalKeys: new Set(),
+  committedTurns: new Set(),
   meClusterId: null,
   knownClusters: [],
   diarizePcm: null,
@@ -231,7 +231,7 @@ function startSession(event) {
   state.lastAction = "Session started";
   state.currentSuggestion = "";
   state.lastCoachRequestAt = 0;
-  state.pendingStreamingFinalKeys.clear();
+  state.committedTurns.clear();
   state.lastStreamingFinalText = "";
   state.meClusterId = null;
   state.knownClusters = [];
@@ -298,6 +298,7 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
     text: cleanText,
     speaker: normalizedSpeaker,
     cluster: metadata.cluster || null,
+    turnOrder: Number.isInteger(metadata.turnOrder) ? metadata.turnOrder : null,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     codeword
   };
@@ -606,7 +607,10 @@ function createDiarizeSocket() {
     }
 
     if (payload.type === "transcript" && Array.isArray(payload.segments)) {
-      handleStreamingSegments(payload.segments, payload.isFinal);
+      handleStreamingSegments(payload.segments, payload.isFinal, {
+        turnOrder: payload.turnOrder,
+        isFormatted: payload.isFormatted
+      });
       return;
     }
 
@@ -646,7 +650,7 @@ function parseSocketPayload(data) {
   }
 }
 
-function handleStreamingSegments(segments, isFinal) {
+function handleStreamingSegments(segments, isFinal, meta = {}) {
   const cleanSegments = segments
     .map((segment) => ({
       ...segment,
@@ -678,17 +682,38 @@ function handleStreamingSegments(segments, isFinal) {
   }
 
   if (isFinal) {
-    const finalKey = labeled.map((segment) => `${segment.cluster}:${segment.text}`).join("|");
-    if (finalKey && finalKey !== state.lastStreamingFinalText) {
-      state.lastStreamingFinalText = finalKey;
-      commitFinalStreamingSegments(labeled);
-    }
+    commitFinalStreamingSegments(labeled, meta);
   } else {
     render();
   }
 }
 
-function commitFinalStreamingSegments(segments) {
+// Each final turn is committed exactly once, identified by AssemblyAI's
+// turn_order. format_turns sends an unformatted final then a formatted final
+// for the same turn; the first commits the line, the second upgrades that same
+// line's text in place — so we never duplicate a turn or drop its continuation.
+function commitFinalStreamingSegments(segments, meta = {}) {
+  const turnOrder = Number.isInteger(meta.turnOrder) ? meta.turnOrder : null;
+
+  if (turnOrder === null) {
+    // Fallback when the provider gives no turn id: dedup by text so a re-emitted
+    // final is not added twice.
+    const finalKey = segments.map((segment) => `${segment.cluster}:${segment.text}`).join("|");
+    if (!finalKey || finalKey === state.lastStreamingFinalText) return;
+    state.lastStreamingFinalText = finalKey;
+    addCommittedTurnLines(segments, null);
+    return;
+  }
+
+  if (state.committedTurns.has(turnOrder)) {
+    updateCommittedTurn(turnOrder, segments);
+    return;
+  }
+  state.committedTurns.add(turnOrder);
+  addCommittedTurnLines(segments, turnOrder);
+}
+
+function addCommittedTurnLines(segments, turnOrder) {
   for (const segment of segments) {
     let speaker;
 
@@ -706,9 +731,25 @@ function commitFinalStreamingSegments(segments) {
     addTranscriptLine(segment.text, speaker, {
       // Uncertain turns carry no cluster, so Swap (which re-maps by cluster)
       // leaves their heuristic decision intact.
-      cluster: segment.uncertain ? null : segment.cluster
+      cluster: segment.uncertain ? null : segment.cluster,
+      turnOrder
     });
   }
+}
+
+// Replace the text of an already-committed turn with its formatted version,
+// without re-running coaching or wake-word toggling for the same words.
+function updateCommittedTurn(turnOrder, segments) {
+  const text = segments.map((segment) => segment.text).join(" ").trim();
+  if (!text) return;
+  for (let index = state.transcript.length - 1; index >= 0; index -= 1) {
+    if (state.transcript[index].turnOrder === turnOrder) {
+      state.transcript[index].text = text;
+      state.transcript[index].codeword = containsWakeWord(text);
+      break;
+    }
+  }
+  render();
 }
 
 // A short reply usually comes from the other person than whoever just held the
@@ -1161,7 +1202,7 @@ function deleteSessionData() {
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
-  state.pendingStreamingFinalKeys.clear();
+  state.committedTurns.clear();
   elements.partnerInput.value = "";
   elements.goalInput.value = "";
   elements.liveSpeakerInput.value = "me";
@@ -1221,7 +1262,7 @@ function stopDiarizedTranscription() {
   state.diarizeStream = null;
   state.diarizeSocket = null;
   state.lastStreamingFinalText = "";
-  state.pendingStreamingFinalKeys.clear();
+  state.committedTurns.clear();
   state.pendingTranscriptionChunks = 0;
 }
 

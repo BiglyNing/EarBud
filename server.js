@@ -137,6 +137,12 @@ function connectAssemblyAiStream(clientSocket, sendClientEvent) {
       sendClientEvent({
         type: "transcript",
         isFinal: Boolean(payload.end_of_turn),
+        // turn_order is AssemblyAI's stable id for the turn. format_turns emits
+        // an unformatted final then a formatted final for the SAME turn_order;
+        // the client uses this to upgrade that line in place instead of
+        // duplicating it or dropping the continuation.
+        turnOrder: Number.isInteger(payload.turn_order) ? payload.turn_order : null,
+        isFormatted: Boolean(payload.turn_is_formatted),
         segments: [{ speaker: assemblySpeakerCluster(label), text, start, end, words, uncertain }]
       });
       return;
