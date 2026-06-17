@@ -14,20 +14,20 @@ EarBud is designed to help you:
 - Track whether the conversation is moving toward or away from that objective.
 - Notice openings, objections, leverage points, confusion, and closing moments.
 - Get short suggestions for what to say or ask next.
-- Stay strategic without becoming deceptive, coercive, or manipulative.
+- Use persuasion, influence, and rhetoric to advance your objective while staying truthful — no fabricated facts and no coercion.
 
-## Strategy Lens
+## Strategy Library
 
-EarBud's advice should be influenced by practical ideas from strategy, negotiation, human behavior, and execution. Examples of useful lenses include:
+EarBud's advice is shaped by a library of condensed persuasion, influence, and rhetoric tactics drawn from well-known sources, defined in [coachingPrinciples.js](coachingPrinciples.js). Each tactic is one line, tagged by situation (power, negotiation, conflict, persuasion, rhetoric, rapport, reading people, status). Sources include:
 
-- `48 Laws of Power`: strategic awareness, incentives, status, leverage, and hidden dynamics.
-- `The Art of War`: positioning, timing, terrain, and knowing when not to engage.
-- `Never Split the Difference`: calibrated questions, tactical empathy, labels, mirrors, and clear asks.
-- `The Laws of Human Nature`: motives, emotional signals, blind spots, and social patterns.
-- `Atomic Habits`: small next actions, friction, cues, and follow-through.
-- `Deep Work`: attention, clarity, and protecting the objective from distraction.
+- `48 Laws of Power`, `The Prince`, `The Art of War`, `33 Strategies of War` — power, positioning, timing, leverage.
+- `Never Split the Difference`, `Getting to Yes` — calibrated questions, tactical empathy, labels, mirrors, interests.
+- `Influence`, `Pre-Suasion` — reciprocity, commitment, social proof, scarcity, framing.
+- `Aristotle's Rhetoric`, `Thank You for Arguing` — ethos/pathos/logos, reframing, anchoring, the illusion of choice.
+- `How to Win Friends and Influence People`, `The Charisma Myth` — rapport, attention, presence.
+- `The Laws of Human Nature`, `Impro` — motives, emotional signals, status dynamics.
 
-These are reasoning influences, not scripts to quote. EarBud should translate them into honest, situational guidance that a user can use in real conversation.
+The library text is injected into the coach's system prompt; the model picks the single most relevant tactic per moment and reports it in the `lens` field. These are reasoning influences, not scripts to quote, and they work through framing and delivery rather than lying.
 
 ## Core Use Case
 
@@ -91,12 +91,14 @@ This repo includes a browser-based prototype and a Node backend agent:
 - One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`, with a turn-taking guess for short unattributed replies.
 - Automatic call mode where microphone audio is `Me` and shared tab/system audio is `Them`.
 - Typed transcript fallback for testing.
-- Backend coaching suggestions.
+- Backend coaching suggestions powered by OpenAI, shaped by the strategy library, with per-session model choice (`gpt-5-nano` / `gpt-5-mini`) and a speed/quality control.
+- A consent gate and privacy disclosure required before a session can start.
 - Codeword toggled active coaching.
 - Accept, dismiss, evaluate, end, and delete controls.
 - Optional browser-spoken suggestions with local voice controls.
 - Local post-session review.
 - Session follow-ups and review state.
+- An automated test suite (`npm test`) covering the coaching, library, and activation logic.
 
 After the codeword is spoken, EarBud continues listening and evaluates the conversation for useful advice until the codeword is spoken again.
 
@@ -110,12 +112,18 @@ Install dependencies:
 npm install
 ```
 
-Create a `.env` file using [.env.example](.env.example), then set `GEMINI_API_KEY`.
+Create a `.env` file using [.env.example](.env.example), then set the keys for the features you want:
 
-You can create a Gemini API key in Google AI Studio:
+- `OPENAI_API_KEY` — powers the **conversation coach** (required for model suggestions). Optional `OPENAI_MODEL` (`gpt-5-nano` default or `gpt-5-mini`) and `OPENAI_REASONING_EFFORT` (`minimal` default; raise for sharper but slower advice). Both are also selectable per session in the UI.
+- `GEMINI_API_KEY` — powers backend **audio transcription** only, used by the "Online call" speaker mode. Not needed if you only use one-mic (AssemblyAI) or manual modes.
+- `ASSEMBLYAI_API_KEY` — powers one-mic streaming **diarization**.
+
+Create keys here:
 
 ```text
-https://aistudio.google.com/apikey
+OpenAI:     https://platform.openai.com/api-keys
+Gemini:     https://aistudio.google.com/apikey
+AssemblyAI: https://www.assemblyai.com/app
 ```
 
 Run it with:
@@ -130,9 +138,15 @@ Open:
 http://localhost:3000
 ```
 
+Run the automated tests anytime with:
+
+```powershell
+npm test
+```
+
 The app is intended to run locally on your machine. Do not expose the local server publicly unless you have added proper authentication, consent flows, and production security controls.
 
-Gemini's free tier is enough for local testing, but it is rate-limited and Google may use free-tier inputs to improve its products. Check the current Gemini pricing and billing docs before using sensitive data or sharing the app with other users.
+The coach is low-cost on `gpt-5-nano`, but it is a paid API — check current OpenAI pricing and your usage limits. Gemini (transcription) and the providers above may use inputs per their own terms; review them before using sensitive data or sharing the app.
 
 For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`). Short, unattributed single-word turns fall back to a turn-taking guess, and you can tap Swap if `Me` / `Them` end up reversed.
 
@@ -146,6 +160,8 @@ EarBud is built around sensitive live conversation audio. Any real use should ha
 - User control over what is stored.
 - Secure handling of transcripts and summaries.
 - Easy deletion of personal data.
+
+The local prototype already enforces several of these: a consent gate blocks starting a session until you confirm you have the right to record, raw audio is held in memory only (never written to disk), conversation content is kept out of server logs, and you can delete local session data from the UI.
 
 See [Privacy and Safety](docs/privacy-and-safety.md) for the intended safety model.
 
@@ -163,4 +179,4 @@ See [Privacy and Safety](docs/privacy-and-safety.md) for the intended safety mod
 
 ## Project Status
 
-EarBud is an early local prototype focused on objective-driven conversation coaching.
+The local prototype is feature-complete: objective setup, live transcription (browser, one-mic AssemblyAI diarization, or online-call mode), OpenAI-powered strategic coaching with a tactics library, spoken suggestions, post-session review, consent/privacy controls, and an automated test suite. The remaining work is deploying to a real server and building a production frontend.

@@ -1,3 +1,11 @@
+import {
+  normalizeWakeWord,
+  textContainsWakeWord,
+  normalizeSpeaker,
+  normalizeSpeakerMode,
+  shouldToggleOnCodeword
+} from "./sessionLogic.js";
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
 const speechSynthesis = window.speechSynthesis;
@@ -11,8 +19,9 @@ const state = {
   partner: "",
   goal: "",
   tone: "calm",
-  wakeWord: "earbud",
-  coachModel: "gpt-5-nano",
+  wakeWord: "bud",
+  coachModel: "gpt-5-mini",
+  coachReasoningEffort: "minimal",
   speakerMode: "manual",
   liveSpeaker: "me",
   manualSpeaker: "me",
@@ -29,8 +38,8 @@ const state = {
   currentSuggestion: "",
   lastLens: "None",
   awaitingObjective: false,
-  spokenSuggestions: false,
-  speechFrequency: "important",
+  spokenSuggestions: true,
+  speechFrequency: "all",
   speechVolume: 0.7,
   speechRate: 0.95,
   speechSpeaking: false,
@@ -54,7 +63,9 @@ const state = {
   lastConfidentSpeaker: null,
   health: null,
   lastCoachRequestAt: 0,
-  coachCooldownMs: 12000,
+  coachCooldownMs: 6000,
+  lastCodewordAt: 0,
+  codewordCooldownMs: 2500,
   geminiQuotaRetryAt: 0
 };
 
@@ -65,6 +76,9 @@ const elements = {
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
   coachModelInput: document.querySelector("#coachModelInput"),
+  coachSpeedInput: document.querySelector("#coachSpeedInput"),
+  consentInput: document.querySelector("#consentInput"),
+  consentStatus: document.querySelector("#consentStatus"),
   speakerModeInput: document.querySelector("#speakerModeInput"),
   speakerModeStatus: document.querySelector("#speakerModeStatus"),
   backendStatus: document.querySelector("#backendStatus"),
@@ -218,6 +232,17 @@ function renderVoiceControls() {
 function startSession(event) {
   event.preventDefault();
 
+  if (elements.consentInput && !elements.consentInput.checked) {
+    if (elements.consentStatus) {
+      elements.consentStatus.textContent = "Please confirm consent before starting a session.";
+    }
+    elements.consentInput.focus();
+    return;
+  }
+  if (elements.consentStatus) {
+    elements.consentStatus.textContent = "";
+  }
+
   state.partner = elements.partnerInput.value.trim() || "this person";
   state.goal = "";
   state.awaitingObjective = true;
@@ -225,6 +250,9 @@ function startSession(event) {
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
   if (elements.coachModelInput) {
     state.coachModel = elements.coachModelInput.value || state.coachModel;
+  }
+  if (elements.coachSpeedInput) {
+    state.coachReasoningEffort = elements.coachSpeedInput.value || state.coachReasoningEffort;
   }
   state.speakerMode = normalizeSpeakerMode(elements.speakerModeInput.value);
   elements.wakeWordInput.value = state.wakeWord;
@@ -243,6 +271,7 @@ function startSession(event) {
   state.currentSuggestion = "";
   state.lastLens = "None";
   state.lastCoachRequestAt = 0;
+  state.lastCodewordAt = 0;
   state.meClusterId = null;
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
@@ -300,11 +329,6 @@ async function fetchHealth() {
   }
 }
 
-function normalizeWakeWord(value) {
-  const cleanValue = String(value || "").trim().toLowerCase();
-  return cleanValue || "earbud";
-}
-
 function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   const cleanText = text.trim();
   if (!cleanText || !state.active || state.paused) return;
@@ -332,7 +356,16 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   state.transcript.push(line);
 
   if (codeword) {
-    toggleCoaching();
+    // Debounce: one spoken codeword can be detected several times (formatted +
+    // unformatted finals, overlapping chunks, re-fired recognition). Toggle only
+    // on the first detection within the cooldown window.
+    const now = Date.now();
+    if (shouldToggleOnCodeword(now, state.lastCodewordAt, state.codewordCooldownMs)) {
+      state.lastCodewordAt = now;
+      toggleCoaching();
+    } else {
+      render();
+    }
     return line;
   }
 
@@ -826,13 +859,7 @@ function swapMeThem() {
 }
 
 function containsWakeWord(text) {
-  return text.toLowerCase().includes(state.wakeWord.toLowerCase());
-}
-
-function normalizeSpeaker(value) {
-  if (value === "unknown") return "unknown";
-  if (value === "them") return "them";
-  return "me";
+  return textContainsWakeWord(text, state.wakeWord);
 }
 
 function getSpeakerLabel(speaker) {
@@ -840,10 +867,6 @@ function getSpeakerLabel(speaker) {
   if (normalized === "unknown") return "Unknown";
   if (normalized === "them") return "Them";
   return "Me";
-}
-
-function normalizeSpeakerMode(value) {
-  return ["manual", "source", "diarize"].includes(value) ? value : "manual";
 }
 
 function toggleCoaching() {
@@ -892,6 +915,7 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
         tone: state.tone,
         wakeWord: state.wakeWord,
         model: state.coachModel,
+        reasoningEffort: state.coachReasoningEffort,
         latestLine: line.text,
         latestSpeaker: line.speaker,
         transcript: state.transcript,
@@ -1250,6 +1274,7 @@ function deleteSessionData() {
   state.currentSuggestion = "";
   state.lastLens = "None";
   state.lastCoachRequestAt = 0;
+  state.lastCodewordAt = 0;
   render();
 }
 

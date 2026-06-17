@@ -25,27 +25,23 @@ export function cleanTranscription(text) {
     .trim();
 }
 
-// Flag obviously harmful requests (deception, coercion, pressuring vulnerable
-// people). Returns a redirect message when tripped, or null when the text is
-// clear. This is the backstop guardrail behind the coach's system prompt.
+// Backstop guardrail behind the coach's system prompt. The model handles the
+// nuanced "stay truthful, don't coerce" judgement; this only catches a few
+// unambiguous, rarely-benign harms so it does not false-positive on ordinary
+// conversation. Pass the user's own intent (objective + their latest line) —
+// NOT the whole transcript, which would re-trip on the other person's words.
 export function findSafetyIssue(text) {
   const value = String(text || "").toLowerCase();
   const patterns = [
-    /\btrick\b/,
-    /\bdeceive\b/,
-    /\blie\b/,
-    /\bblackmail\b/,
-    /\bthreaten\b/,
-    /\bcoerce\b/,
-    /\bmanipulate\b/,
-    /\bsecretly\b.*\b(record|extract|get)\b/,
-    /\bmake them\b.*\bwithout (them )?(knowing|consent)\b/,
-    /\bpressure\b.*\b(vulnerable|minor|elderly|patient)\b/
+    /\bblackmail/,
+    /\bsecretly\s+\w*\s*(record|tape|film)/,
+    /\b(exploit|prey on|take advantage of)\b.*\b(minor|child|kid|underage|elderly|vulnerable|grieving|dying)\b/,
+    /\bpressure\b.*\b(minor|child|underage|elderly|vulnerable|patient)\b/
   ];
 
   if (!patterns.some((pattern) => pattern.test(value))) return null;
 
-  return "Keep this honest: ask directly, respect their choice, and avoid pressure, deception, or hidden extraction.";
+  return "Keep this honest and consensual: avoid blackmail, hidden recording, or pressuring vulnerable people.";
 }
 
 // Deterministic fallback coaching used when the model backend is unavailable.

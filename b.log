@@ -1,0 +1,4 @@
+EarBud running at http://localhost:3784
+OpenAI conversation coach enabled (default gpt-5-mini, switchable to gpt-5-mini/gpt-5-nano).
+Gemini audio transcription enabled with gemini-2.5-flash.
+Streaming diarization: AssemblyAI u3-rt-pro (speaker_labels enabled).

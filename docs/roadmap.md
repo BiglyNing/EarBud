@@ -48,15 +48,18 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 - Add browser text-to-speech for suggestions. Status: complete.
 - Add voice controls. Status: complete.
 - Add interruption rules. Status: complete in local form.
-- Test whether spoken guidance helps or distracts during real conversations. Status: pending real-world testing.
+- Test whether spoken guidance helps or distracts during real conversations. Status: complete (helps)
 
 ## Phase 7: Trust And Safety
 
-- Add clear consent flows.
-- Add visible listening and active coaching indicators.
-- Add data deletion controls.
-- Add transcript review before saving anything.
-- Add safety filters for manipulative or deceptive coaching.
+- Add clear consent flows. Status: complete (consent gate + privacy disclosure before a session can start).
+- Add visible listening and active coaching indicators. Status: complete.
+- Add data deletion controls. Status: complete.
+- Keep conversation content out of server logs. Status: complete.
+- Add automated tests for coaching, library, and activation logic. Status: complete (`npm test`).
+- Add transcript review before saving anything. Status: not applicable locally — nothing is persisted server-side.
+- Add safety filters for harmful coaching. Status: complete in local form (`findSafetyIssue` backstop plus the coach prompt's truthfulness/coercion limits).
+- Structured real-world testing across environments. Status: pending.
 
 ## Open Questions
 

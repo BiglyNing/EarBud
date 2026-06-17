@@ -221,10 +221,18 @@ Deliverable:
 
 Current status:
 
-- Raw audio is not stored by default, and local session data can be deleted from the UI.
-- An automated test suite runs with `npm test` (Node's built-in runner, no extra dependencies). It covers the pure coaching logic in `coachLogic.js` (speaker labels, transcription cleaning, safety guardrail, local fallback coach, model JSON parsing) and the tactics library in `coachingPrinciples.js` (tag selection, ranking, data integrity).
-- Pure, testable logic was extracted into `coachLogic.js` so it can be verified without booting the server.
-- Still to do: consent/recording disclosure flow, transcript review before saving, log redaction, activation-toggle tests, and structured real-world testing across environments.
+- A consent gate blocks starting a session until the user confirms they have the right/consent to record, with a privacy disclosure explaining that audio is never saved to disk and transcript text is sent only to the configured AI providers.
+- Active listening/coaching state is shown in the UI (device pill, phase chip, session status), and pause/end/delete give fast control over the session.
+- Raw audio is never written to disk (in-memory only), and local session data can be deleted from the UI.
+- Server logs are kept clean of conversation content: errors log messages only, and no transcript/goal text is logged.
+- An automated test suite runs with `npm test` (Node's built-in runner, no extra dependencies), covering:
+  - coaching logic in `coachLogic.js` (speaker labels, transcription cleaning, safety guardrail, local fallback coach, model JSON parsing),
+  - the tactics library in `coachingPrinciples.js` (tag selection, ranking, data integrity),
+  - session/activation logic in `sessionLogic.js` (wake word normalization, codeword detection, speaker normalization).
+- Pure, testable logic was extracted into `coachLogic.js` and `sessionLogic.js` so it can be verified without booting the server or a browser.
+- Remaining before this phase is fully closed: structured real-world testing across quiet/noisy/indoor/outdoor environments. Nothing is persisted server-side, so "transcript review before saving" is not applicable in the local prototype.
+
+What is left after the local prototype: deploy to a real server and build a production frontend (the two items intentionally out of scope here).
 
 ## Full Local MVP Milestone
 

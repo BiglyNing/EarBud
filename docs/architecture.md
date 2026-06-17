@@ -111,8 +111,9 @@ The default should be short and non-disruptive.
 - Server: local Node.js and Express.
 - Transcription: browser speech recognition, Gemini-backed source-separated transcription, AssemblyAI streaming diarization, or typed transcript input.
 - Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) with a turn-taking guess for short unattributed turns in one-mic mode; source-separated `Me` / `Them` labels in automatic call mode; user-selected `Me` / `Them` labels in manual mode.
-- Agent backend: Gemini API when `GEMINI_API_KEY` is configured.
-- Storage: in-memory browser state for the active session.
+- Coach backend: OpenAI API when `OPENAI_API_KEY` is configured (`gpt-5-nano` / `gpt-5-mini`, selectable per session), shaped by the tactics library in `coachingPrinciples.js`. A deterministic local fallback in `coachLogic.js` answers when the backend is unavailable.
+- Transcription backend: Gemini API when `GEMINI_API_KEY` is configured (audio only; independent of the coach).
+- Storage: in-memory browser state for the active session; raw audio is never written to disk.
 
 ## Engineering Priorities
 

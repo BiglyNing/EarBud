@@ -37,13 +37,21 @@
           </label>
           <label>
             Codeword
-            <input id="wakeWordInput" type="text" value="earbud" autocomplete="off">
+            <input id="wakeWordInput" type="text" value="bud" autocomplete="off">
           </label>
           <label>
             Coach model
             <select id="coachModelInput">
+              <option value="gpt-5-mini" selected>GPT-5 mini (sharper, costs more)</option>
               <option value="gpt-5-nano">GPT-5 nano (cheapest, fast)</option>
-              <option value="gpt-5-mini">GPT-5 mini (sharper, costs more)</option>
+            </select>
+          </label>
+          <label>
+            Coach speed
+            <select id="coachSpeedInput">
+              <option value="minimal">Fast (least thinking)</option>
+              <option value="low">Balanced</option>
+              <option value="medium">Deep (slower, sharper)</option>
             </select>
           </label>
           <label>
@@ -56,6 +64,17 @@
           </label>
           <p class="helper-text" id="speakerModeStatus">One-mic mode auto-detects speakers. Speak first to set your voice as Me.</p>
           <p class="helper-text" id="backendStatus">Checking backend...</p>
+          <div class="consent-box">
+            <p class="helper-text">
+              Privacy: audio is transcribed in real time and never saved to disk. Transcript text is sent to the
+              configured AI providers only to generate coaching, and lives in this browser tab until you end or delete the session.
+            </p>
+            <label class="toggle-row">
+              <input id="consentInput" type="checkbox">
+              I confirm I have the right or consent to record and coach this conversation, and I follow local recording laws.
+            </label>
+            <p class="helper-text" id="consentStatus"></p>
+          </div>
           <button class="primary-action" type="submit">Start Session</button>
         </form>
       </section>
@@ -122,14 +141,14 @@
 
         <div class="voice-controls">
           <label class="toggle-row">
-            <input id="spokenSuggestionsInput" type="checkbox">
+            <input id="spokenSuggestionsInput" type="checkbox" checked>
             Spoken suggestions
           </label>
           <label>
             Frequency
             <select id="speechFrequencyInput">
+              <option value="all" selected>Every suggestion</option>
               <option value="important">Important only</option>
-              <option value="all">Every suggestion</option>
             </select>
           </label>
           <label>
@@ -191,6 +210,6 @@
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js" type="module"></script>
   </body>
 </html>

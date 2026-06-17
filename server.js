@@ -31,12 +31,21 @@ let geminiQuotaLimitedUntil = 0;
 // Conversation coaching runs on OpenAI. The user may pick the model per session.
 const coachClient = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const COACH_MODELS = new Set(["gpt-5-mini", "gpt-5-nano"]);
-const defaultCoachModel = COACH_MODELS.has(process.env.OPENAI_MODEL) ? process.env.OPENAI_MODEL : "gpt-5-nano";
+const defaultCoachModel = COACH_MODELS.has(process.env.OPENAI_MODEL) ? process.env.OPENAI_MODEL : "gpt-5-mini";
+// Reasoning models "think" before answering; less thinking = faster, more
+// consistent latency. "minimal" suits this tightly-scoped task. Bump to "low"/
+// "medium" via OPENAI_REASONING_EFFORT if suggestions ever feel shallow.
+const REASONING_EFFORTS = new Set(["minimal", "low", "medium", "high"]);
+const coachReasoningEffort = REASONING_EFFORTS.has(process.env.OPENAI_REASONING_EFFORT)
+  ? process.env.OPENAI_REASONING_EFFORT
+  : "minimal";
 
 function resolveCoachModel(requested) {
   return COACH_MODELS.has(requested) ? requested : defaultCoachModel;
 }
 
+// memoryStorage keeps uploaded audio in RAM for the duration of one request and
+// never writes it to disk — raw audio is not persisted anywhere on the server.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -56,6 +65,7 @@ app.get("/api/health", (_req, res) => {
     diarizationReady: Boolean(assemblyAiApiKey),
     model: defaultCoachModel,
     coachModels: [...COACH_MODELS],
+    reasoningEffort: coachReasoningEffort,
     geminiQuotaLimited: Boolean(quotaLimit),
     geminiQuotaRetryAt: quotaLimit?.retryAt || null
   });
@@ -350,7 +360,9 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
       return;
     }
 
-    console.error("Transcription failed:", error);
+    // Log only the message, never the request/audio payload, to avoid leaking
+    // conversation content into server logs.
+    console.error("Transcription failed:", error?.message || error);
     res.status(500).json({
       error: "Gemini failed to transcribe this audio chunk."
     });
@@ -367,6 +379,7 @@ app.post("/api/coach", async (req, res) => {
 
   const { partner, goal, tone, wakeWord, latestLine, latestSpeaker, transcript, coachingActive } = req.body || {};
   const coachModel = resolveCoachModel(req.body?.model);
+  const reasoningEffort = REASONING_EFFORTS.has(req.body?.reasoningEffort) ? req.body.reasoningEffort : coachReasoningEffort;
   const recentTranscript = Array.isArray(transcript)
     ? transcript.slice(-16).map((line) => {
       const speaker = getSpeakerLabel(line.speaker);
@@ -387,7 +400,9 @@ app.post("/api/coach", async (req, res) => {
     coachingActive
   });
 
-  const safetyIssue = findSafetyIssue([goal, latestLine, recentTranscript].join("\n"));
+  // Scan only the user's own intent (objective + their latest line). Scanning
+  // the whole transcript would re-trip on the other person's words every call.
+  const safetyIssue = findSafetyIssue([goal, latestLine].join("\n"));
   if (safetyIssue) {
     res.json({
       phase: "Boundary",
@@ -428,7 +443,7 @@ app.post("/api/coach", async (req, res) => {
     "- Me means the EarBud user.",
     "- Them means the conversation partner or other person.",
     `Desired tone: ${tone || "calm"}`,
-    `Codeword: ${wakeWord || "earbud"}`,
+    `Codeword: ${wakeWord || "bud"}`,
     `Active coaching: ${Boolean(coachingActive)}`,
     "Recent transcript:",
     recentTranscript || "(no transcript yet)",
@@ -440,7 +455,7 @@ app.post("/api/coach", async (req, res) => {
   try {
     const completion = await coachClient.chat.completions.create({
       model: coachModel,
-      reasoning_effort: "low",
+      reasoning_effort: reasoningEffort,
       max_completion_tokens: 4000,
       messages: [
         { role: "system", content: systemPrompt },
@@ -471,7 +486,8 @@ app.post("/api/coach", async (req, res) => {
     const payload = parseAgentJson(completion.choices?.[0]?.message?.content);
     res.json(payload);
   } catch (error) {
-    console.error("Coach request failed:", error);
+    // Message only — keep transcript/goal content out of server logs.
+    console.error("Coach request failed:", error?.message || error);
     res.status(502).json({
       error: "The coaching backend failed to generate a suggestion.",
       fallback: localFallback

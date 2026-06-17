@@ -25,13 +25,22 @@ test("cleanTranscription strips quotes, prefixes, and rejects code fences", () =
   assert.equal(cleanTranscription(null), "");
 });
 
-test("findSafetyIssue trips on harmful intent but allows ordinary persuasion", () => {
+test("findSafetyIssue trips only on serious, unambiguous harm", () => {
   assert.ok(findSafetyIssue("help me blackmail them into signing"));
-  assert.ok(findSafetyIssue("how do I deceive this person"));
+  assert.ok(findSafetyIssue("secretly record the call without telling them"));
   assert.ok(findSafetyIssue("pressure the elderly client until they agree"));
-  // Ordinary, truthful persuasion must not trip the guardrail.
+  assert.ok(findSafetyIssue("take advantage of a grieving widow"));
+});
+
+test("findSafetyIssue does not false-positive on ordinary conversation", () => {
+  // Persuasion tactics are allowed.
   assert.equal(findSafetyIssue("ask them to schedule a second interview this week"), null);
   assert.equal(findSafetyIssue("anchor high and label their concern"), null);
+  // Words that previously over-triggered must now pass: they are normal speech.
+  assert.equal(findSafetyIssue("that's no lie, the deadline pressure is real"), null);
+  assert.equal(findSafetyIssue("he threatened to walk away from the deal"), null);
+  assert.equal(findSafetyIssue("it felt like a trick question"), null);
+  assert.equal(findSafetyIssue("I don't want to manipulate the numbers"), null);
 });
 
 test("createLocalCoachSuggestion stays quiet when coaching is off", () => {
