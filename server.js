@@ -5,17 +5,30 @@ import { fileURLToPath } from "url";
 import express from "express";
 import multer from "multer";
 import WebSocket, { WebSocketServer } from "ws";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
+import { principles, formatPrinciples } from "./coachingPrinciples.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = http.createServer(app);
 const port = Number(process.env.PORT || 3000);
+
+// Audio transcription stays on Gemini (untouched).
 const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY || "";
 let geminiQuotaLimitedUntil = 0;
+
+// Conversation coaching runs on OpenAI. The user may pick the model per session.
+const coachClient = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const COACH_MODELS = new Set(["gpt-5-mini", "gpt-5-nano"]);
+const defaultCoachModel = COACH_MODELS.has(process.env.OPENAI_MODEL) ? process.env.OPENAI_MODEL : "gpt-5-nano";
+
+function resolveCoachModel(requested) {
+  return COACH_MODELS.has(requested) ? requested : defaultCoachModel;
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -31,9 +44,11 @@ app.get("/api/health", (_req, res) => {
   const quotaLimit = getGeminiQuotaLimit();
   res.json({
     ok: true,
-    agentReady: Boolean(client),
+    agentReady: Boolean(coachClient),
+    transcriptionReady: Boolean(client),
     diarizationReady: Boolean(assemblyAiApiKey),
-    model,
+    model: defaultCoachModel,
+    coachModels: [...COACH_MODELS],
     geminiQuotaLimited: Boolean(quotaLimit),
     geminiQuotaRetryAt: quotaLimit?.retryAt || null
   });
@@ -188,10 +203,10 @@ function connectAssemblyAiStream(clientSocket, sendClientEvent) {
       sendClientEvent({
         type: "transcript",
         isFinal: Boolean(payload.end_of_turn),
-        // turn_order is AssemblyAI's stable id for the turn. format_turns emits
-        // an unformatted final then a formatted final for the SAME turn_order;
-        // the client uses this to upgrade the line(s) in place instead of
-        // duplicating them or dropping the continuation.
+        // format_turns emits two end_of_turn finals per turn_order: an
+        // unformatted one, then a formatted one. isFormatted lets the client
+        // commit a turn only on its formatted final, so it is never recorded
+        // twice; turnOrder is forwarded for ordering/metadata.
         turnOrder: Number.isInteger(payload.turn_order) ? payload.turn_order : null,
         isFormatted: Boolean(payload.turn_is_formatted),
         segments
@@ -336,14 +351,15 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
 });
 
 app.post("/api/coach", async (req, res) => {
-  if (!client) {
+  if (!coachClient) {
     res.status(503).json({
-      error: "GEMINI_API_KEY is not set. Add it to your environment or .env file to enable the backend agent."
+      error: "OPENAI_API_KEY is not set. Add it to your environment or .env file to enable the coaching agent."
     });
     return;
   }
 
   const { partner, goal, tone, wakeWord, latestLine, latestSpeaker, transcript, coachingActive } = req.body || {};
+  const coachModel = resolveCoachModel(req.body?.model);
   const recentTranscript = Array.isArray(transcript)
     ? transcript.slice(-16).map((line) => {
       const speaker = getSpeakerLabel(line.speaker);
@@ -368,102 +384,90 @@ app.post("/api/coach", async (req, res) => {
   if (safetyIssue) {
     res.json({
       phase: "Boundary",
-      state: "Safety Boundary",
+      state: "Boundary",
       shouldChimeIn: true,
       suggestion: safetyIssue,
-      followUp: null
+      followUp: null,
+      lens: "None"
     });
     return;
   }
 
-  const quotaLimit = getGeminiQuotaLimit();
-  if (quotaLimit) {
-    res.status(429).json({
-      code: "GEMINI_QUOTA_EXHAUSTED",
-      error: "Gemini free-tier quota is exhausted for this project/model. EarBud is using local fallback coaching until the quota resets.",
-      retryAt: quotaLimit.retryAt,
-      fallback: localFallback
-    });
-    return;
-  }
+  const systemPrompt = [
+    "You are EarBud, a private conversation coach.",
+    "The user is in a live conversation and wants to complete a specific objective.",
+    "Base suggestions primarily on the user's stated objective and the labeled transcript.",
+    "Every suggestion must help Me move toward the user's objective or protect the objective from being harmed.",
+    "Treat Me as the EarBud user who needs advice, and Them as the person the user is talking to.",
+    "Suggest what Me should say or do next; do not give advice to Them.",
+    "You have a library of persuasion, influence, and rhetoric tactics below. Pick the single most relevant tactic for this moment and let it shape your suggestion.",
+    "Tactics library:",
+    formatPrinciples(principles),
+    "These are reasoning influences, not scripts: apply the chosen tactic naturally and never quote or imitate book text.",
+    "Name the book of the tactic you used in the lens field (e.g. \"48 Laws of Power\", \"Never Split the Difference\"); use \"None\" only when advising to keep listening.",
+    "Only chime in when advice is useful; otherwise say to keep listening.",
+    "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
+    "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
+    "The followUp value must be null unless there is a concrete next step to remember.",
+    "Use persuasion, influence, framing, tactical empathy, status, and rhetorical technique freely to advance the user's objective.",
+    "Stay truthful: do not fabricate facts, tell outright lies, make threats, or coerce the other person against their will.",
+    "The objective itself must be legitimate; only if it is to harm, exploit, or defraud the other person, return state Boundary and redirect."
+  ].join("\n");
+
+  const userPrompt = [
+    `Conversation partner: ${partner || "unknown"}`,
+    `User objective: ${goal || "move the conversation toward a clear next step"}`,
+    "Speaker labels:",
+    "- Me means the EarBud user.",
+    "- Them means the conversation partner or other person.",
+    `Desired tone: ${tone || "calm"}`,
+    `Codeword: ${wakeWord || "earbud"}`,
+    `Active coaching: ${Boolean(coachingActive)}`,
+    "Recent transcript:",
+    recentTranscript || "(no transcript yet)",
+    "Latest transcript line:",
+    `${getSpeakerLabel(latestSpeaker)}: ${latestLine}`,
+    "Decide whether to chime in now. If useful, generate the next strategic move."
+  ].join("\n\n");
 
   try {
-    const response = await client.models.generateContent({
-      model,
-      contents: [
-        `Conversation partner: ${partner || "unknown"}`,
-        `User objective: ${goal || "move the conversation toward a clear next step"}`,
-        "Speaker labels:",
-        "- Me means the EarBud user.",
-        "- Them means the conversation partner or other person.",
-        `Desired tone: ${tone || "calm"}`,
-        `Codeword: ${wakeWord || "earbud"}`,
-        `Active coaching: ${Boolean(coachingActive)}`,
-        "Recent transcript:",
-        recentTranscript || "(no transcript yet)",
-        "Latest transcript line:",
-        `${getSpeakerLabel(latestSpeaker)}: ${latestLine}`,
-        "Decide whether to chime in now. If useful, generate the next strategic move."
-      ].join("\n\n"),
-      config: {
-        systemInstruction: [
-          "You are EarBud, a private conversation coach.",
-          "The user is in a live conversation and wants to complete a specific objective.",
-          "Base suggestions primarily on the user's stated objective and the labeled transcript.",
-          "Every suggestion must help Me move toward the user's objective or protect the objective from being harmed.",
-          "Treat Me as the EarBud user who needs advice, and Them as the person the user is talking to.",
-          "Suggest what Me should say or do next; do not give advice to Them.",
-          "Reason through these strategic lenses and let the single most relevant one shape each suggestion:",
-          "- 48 Laws of Power: strategic awareness, incentives, status, leverage, and hidden dynamics.",
-          "- The Art of War: positioning, timing, terrain, and knowing when not to engage.",
-          "- Never Split the Difference: calibrated questions, tactical empathy, labels, mirrors, and clear asks.",
-          "- The Laws of Human Nature: motives, emotional signals, blind spots, and social patterns.",
-          "- Atomic Habits: small next actions, friction, cues, and follow-through.",
-          "- Deep Work: attention, clarity, and protecting the objective from distraction.",
-          "These are reasoning influences, not scripts: translate them into honest, situational advice and never quote or imitate their text.",
-          "Name the lens you used in the lens field, written exactly as listed above; use \"None\" only when advising to keep listening.",
-          "Only chime in when advice is useful; otherwise say to keep listening.",
-          "Return structured JSON with keys: phase, state, shouldChimeIn, suggestion, followUp, lens.",
-          "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
-          "shouldChimeIn must be a boolean.",
-          "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
-          "The followUp value must be null unless there is a concrete next step to remember.",
-          "Do not suggest deception, coercion, manipulation, harassment, or false claims.",
-          "If the user's objective is unsafe, return state Boundary and redirect to honest, consent-aware communication."
-        ].join("\n"),
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            phase: { type: Type.STRING },
-            state: { type: Type.STRING },
-            shouldChimeIn: { type: Type.BOOLEAN },
-            suggestion: { type: Type.STRING },
-            followUp: { type: Type.STRING, nullable: true },
-            lens: { type: Type.STRING }
-          },
-          required: ["phase", "state", "shouldChimeIn", "suggestion", "followUp", "lens"]
+    const completion = await coachClient.chat.completions.create({
+      model: coachModel,
+      reasoning_effort: "low",
+      max_completion_tokens: 4000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "coach_move",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              phase: { type: "string" },
+              state: { type: "string" },
+              shouldChimeIn: { type: "boolean" },
+              suggestion: { type: "string" },
+              followUp: { type: ["string", "null"] },
+              lens: { type: "string" }
+            },
+            required: ["phase", "state", "shouldChimeIn", "suggestion", "followUp", "lens"]
+          }
         }
       }
     });
 
-    const payload = parseAgentJson(response.text);
+    const payload = parseAgentJson(completion.choices?.[0]?.message?.content);
     res.json(payload);
   } catch (error) {
-    if (isGeminiQuotaError(error)) {
-      const retryAt = setGeminiQuotaLimit(error);
-      res.status(429).json({
-        code: "GEMINI_QUOTA_EXHAUSTED",
-        error: "Gemini free-tier quota is exhausted for this project/model. EarBud is using local fallback coaching until the quota resets.",
-        retryAt,
-        fallback: localFallback
-      });
-      return;
-    }
-
-    console.error("Agent request failed:", error);
-    res.status(500).json({
-      error: "The backend agent failed to generate a suggestion."
+    console.error("Coach request failed:", error);
+    res.status(502).json({
+      error: "The coaching backend failed to generate a suggestion.",
+      fallback: localFallback
     });
   }
 });
@@ -710,7 +714,8 @@ server.on("error", handleServerError);
 
 server.listen(port, () => {
   console.log(`EarBud running at http://localhost:${port}`);
-  console.log(client ? `Gemini conversation coach enabled with ${model}` : "Gemini conversation coach disabled: GEMINI_API_KEY is not set.");
+  console.log(coachClient ? `OpenAI conversation coach enabled (default ${defaultCoachModel}, switchable to ${[...COACH_MODELS].join("/")}).` : "OpenAI conversation coach disabled: OPENAI_API_KEY is not set.");
+  console.log(client ? `Gemini audio transcription enabled with ${model}.` : "Gemini audio transcription disabled: GEMINI_API_KEY is not set.");
   console.log(assemblyAiApiKey
     ? `Streaming diarization: AssemblyAI ${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"} (speaker_labels enabled).`
     : "Streaming diarization disabled: set ASSEMBLYAI_API_KEY.");

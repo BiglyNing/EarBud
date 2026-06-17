@@ -12,6 +12,7 @@ const state = {
   goal: "",
   tone: "calm",
   wakeWord: "earbud",
+  coachModel: "gpt-5-nano",
   speakerMode: "manual",
   liveSpeaker: "me",
   manualSpeaker: "me",
@@ -46,8 +47,6 @@ const state = {
   pendingTranscriptionChunks: 0,
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
-  lastTurn: null,
-  objectiveNorm: "",
   meClusterId: null,
   knownClusters: [],
   diarizePcm: null,
@@ -65,6 +64,7 @@ const elements = {
   objectiveDisplay: document.querySelector("#objectiveDisplay"),
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
+  coachModelInput: document.querySelector("#coachModelInput"),
   speakerModeInput: document.querySelector("#speakerModeInput"),
   speakerModeStatus: document.querySelector("#speakerModeStatus"),
   backendStatus: document.querySelector("#backendStatus"),
@@ -223,6 +223,9 @@ function startSession(event) {
   state.awaitingObjective = true;
   state.tone = elements.toneInput.value;
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
+  if (elements.coachModelInput) {
+    state.coachModel = elements.coachModelInput.value || state.coachModel;
+  }
   state.speakerMode = normalizeSpeakerMode(elements.speakerModeInput.value);
   elements.wakeWordInput.value = state.wakeWord;
   state.active = true;
@@ -240,8 +243,6 @@ function startSession(event) {
   state.currentSuggestion = "";
   state.lastLens = "None";
   state.lastCoachRequestAt = 0;
-  state.lastTurn = null;
-  state.objectiveNorm = "";
   state.meClusterId = null;
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
@@ -277,14 +278,9 @@ function renderBackendStatus() {
     return;
   }
 
-  if (state.health.geminiQuotaLimited || state.geminiQuotaRetryAt > Date.now()) {
-    elements.backendStatus.textContent = "Gemini quota exhausted; local fallback active";
-    return;
-  }
-
   elements.backendStatus.textContent = state.health.agentReady
     ? `coach ready with ${state.health.model}`
-    : "coach needs GEMINI_API_KEY for model suggestions";
+    : "coach needs OPENAI_API_KEY for model suggestions";
 }
 
 async function fetchHealth() {
@@ -707,10 +703,17 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
     .filter((segment) => segment.text);
   if (cleanSegments.length === 0) return;
 
-  // Only confident (attributed) turns define the speaker clusters. The first
-  // confident cluster becomes Me (Swap corrects it). Uncertain short turns are
-  // resolved separately at commit time and must not pollute the mapping.
-  if (isFinal) {
+  // AssemblyAI emits two end_of_turn finals per turn: an unformatted one, then a
+  // formatted one (punctuation, casing, numbers) with the SAME turn_order. We
+  // commit a turn only on its formatted final — AssemblyAI's own guidance, since
+  // acting on both records every turn twice. Partials and the unformatted final
+  // still drive the live transcript, so words still appear without waiting.
+  const isCommit = isFinal && Boolean(meta.isFormatted);
+
+  // Only attributed turns define the speaker clusters, and only at commit time:
+  // the first confident cluster becomes Me (Swap corrects it). Uncertain short
+  // turns are resolved separately and must not pollute the mapping.
+  if (isCommit) {
     cleanSegments.forEach((segment) => {
       if (!segment.uncertain) registerCluster(segment.speaker);
     });
@@ -729,67 +732,26 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
     state.liveTranscript = `${isFinal ? "Final" : "Hearing"}: ${display}`;
   }
 
-  if (isFinal) {
+  if (isCommit) {
     commitFinalStreamingSegments(labeled, meta);
   } else {
     render();
   }
 }
 
-// A final turn is committed once as one line per speaker run. AssemblyAI sends
-// an unformatted final then a formatted final for the same turn (sometimes
-// under the same turn_order, sometimes a bumped/absent one), so we recognise the
-// re-emission by turn_order or by matching the same words, and upgrade the
-// existing line(s) in place instead of repeating the phrase.
+// Record a completed turn as one transcript line per speaker run. Called once
+// per turn — on its formatted final only — so a turn is never committed twice.
 function commitFinalStreamingSegments(segments, meta = {}) {
-  const turnOrder = Number.isInteger(meta.turnOrder) ? meta.turnOrder : null;
   const text = segments.map((segment) => segment.text).join(" ").trim();
-  const norm = normalizeTurnText(text);
-  if (!norm) return;
+  if (!text) return;
 
   // First chunk of the session is the spoken objective, not a transcript line.
-  // Remember its words so the formatted re-emission is swallowed, not committed.
   if (state.awaitingObjective) {
     setSpokenObjective(text);
-    state.objectiveNorm = norm;
-    state.lastTurn = { order: turnOrder, norm, lines: [] };
-    return;
-  }
-  if (state.objectiveNorm && norm === state.objectiveNorm) {
-    state.objectiveNorm = "";
     return;
   }
 
-  // Re-emission of the turn we just committed → upgrade its line(s) in place.
-  // Speaker runs are stable between the unformatted and formatted passes, so
-  // only the text changes.
-  const last = state.lastTurn;
-  const isReemission = Boolean(last)
-    && ((turnOrder !== null && turnOrder === last.order) || norm === last.norm);
-  if (isReemission) {
-    if (last.lines.length === segments.length) {
-      segments.forEach((segment, index) => {
-        const line = last.lines[index];
-        if (!line) return;
-        line.text = segment.text;
-        line.codeword = containsWakeWord(segment.text);
-      });
-      last.norm = norm;
-      last.order = turnOrder ?? last.order;
-      render();
-    }
-    // If the run count changed (rare), keep the first commit to avoid dupes.
-    return;
-  }
-
-  const lines = appendTurnLines(segments, turnOrder);
-  state.lastTurn = { order: turnOrder, norm, lines };
-}
-
-// Lowercase, strip punctuation/spacing so an unformatted final ("hello there")
-// and its formatted re-emission ("Hello there.") compare as the same turn.
-function normalizeTurnText(text) {
-  return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  appendTurnLines(segments, Number.isInteger(meta.turnOrder) ? meta.turnOrder : null);
 }
 
 // Add one transcript line per speaker run. Coaching is evaluated once, on the
@@ -912,11 +874,6 @@ function maybeRequestAgentSuggestion(line) {
 async function requestAgentSuggestion(line = state.transcript[state.transcript.length - 1]) {
   if (!line) return;
 
-  if (state.geminiQuotaRetryAt > Date.now()) {
-    applyCoachPayload(createLocalCoachPayload(line), "Gemini quota is exhausted; using local fallback coaching.");
-    return;
-  }
-
   state.lastCoachRequestAt = Date.now();
   state.requestingAgent = true;
   state.phase = "Evaluating";
@@ -934,6 +891,7 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
         goal: state.goal,
         tone: state.tone,
         wakeWord: state.wakeWord,
+        model: state.coachModel,
         latestLine: line.text,
         latestSpeaker: line.speaker,
         transcript: state.transcript,
@@ -944,9 +902,8 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
     const payload = await response.json();
 
     if (!response.ok) {
-      if (response.status === 429 && payload.code === "GEMINI_QUOTA_EXHAUSTED") {
-        state.geminiQuotaRetryAt = Date.parse(payload.retryAt || "") || Date.now() + 60_000;
-        applyCoachPayload(payload.fallback || createLocalCoachPayload(line), payload.error);
+      if (payload.fallback) {
+        applyCoachPayload(payload.fallback, payload.error);
         return;
       }
       throw new Error(payload.error || "Agent request failed.");
@@ -1276,8 +1233,6 @@ function deleteSessionData() {
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
-  state.lastTurn = null;
-  state.objectiveNorm = "";
   elements.partnerInput.value = "";
   elements.liveSpeakerInput.value = "me";
   elements.manualSpeakerInput.value = "me";
@@ -1336,8 +1291,6 @@ function stopDiarizedTranscription() {
   state.diarizeRecorder = null;
   state.diarizeStream = null;
   state.diarizeSocket = null;
-  state.lastTurn = null;
-  state.objectiveNorm = "";
   state.pendingTranscriptionChunks = 0;
 }
 
