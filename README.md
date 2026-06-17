@@ -88,8 +88,13 @@ This repo includes a browser-based prototype and a Node backend agent:
 - Conversation objective setup.
 - Browser speech recognition when supported by the browser.
 - Speaker-labeled transcripts for `Me` and `Them`.
+<<<<<<< Updated upstream
 - One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`, with a turn-taking guess for short unattributed replies.
 - Online call mode where the microphone (`Me`) and shared tab/system audio (`Them`) are each streamed to AssemblyAI on their own connection — no diarization needed, since each stream is one known speaker.
+=======
+- One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`.
+- Automatic call mode where microphone audio is `Me` and shared tab/system audio is `Them`.
+>>>>>>> Stashed changes
 - Typed transcript fallback for testing.
 - Backend coaching suggestions powered by OpenAI, shaped by the strategy library, with per-session model choice (`gpt-5-nano` / `gpt-5-mini`) and a speed/quality control.
 - A consent gate and privacy disclosure required before a session can start.
@@ -102,7 +107,11 @@ This repo includes a browser-based prototype and a Node backend agent:
 
 After the codeword is spoken, EarBud continues listening and evaluates the conversation for useful advice until the codeword is spoken again.
 
+<<<<<<< Updated upstream
 For one mixed microphone (in-person, AirPods-style), EarBud uses AssemblyAI streaming diarization (set `ASSEMBLYAI_API_KEY`). The first speaker is labeled `Me` and other voices `Them` (tap Swap if reversed); short, unattributed replies are resolved by a turn-taking guess. For online calls, choose call mode instead, allow microphone access for `Me`, then share the call tab/window with audio for `Them`.
+=======
+For one mixed microphone (in-person, AirPods-style), EarBud uses AssemblyAI streaming diarization (set `ASSEMBLYAI_API_KEY`). The first speaker is labeled `Me` and other voices `Them`; tap Swap if the first speaker was the other person. Short, unattributed replies use a simple turn-taking guess. For online calls, choose call mode instead, allow microphone access for `Me`, then share the call tab/window with audio for `Them`.
+>>>>>>> Stashed changes
 
 ## Run Locally
 
@@ -172,7 +181,11 @@ The app is intended to run locally on your machine. Do not expose the local serv
 
 OpenAI (coach) and AssemblyAI (all transcription) are paid APIs — check current pricing and your usage limits, and review each provider's data-use terms before using sensitive data or sharing the app. The coach is low-cost on `gpt-5-nano`; `gpt-5-mini` is sharper but costs more.
 
+<<<<<<< Updated upstream
 For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`). Short, unattributed single-word turns fall back to a turn-taking guess, and you can tap Swap if `Me` / `Them` end up reversed.
+=======
+For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`).
+>>>>>>> Stashed changes
 
 ## Important Privacy Note
 

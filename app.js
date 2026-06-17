@@ -51,6 +51,7 @@ const state = {
   diarizeStream: null,
   diarizeSocket: null,
   diarizeRecorder: null,
+<<<<<<< Updated upstream
   micSocket: null,
   themSocket: null,
   micPcm: null,
@@ -58,6 +59,14 @@ const state = {
   pendingTranscriptionChunks: 0,
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
+=======
+  pendingTranscriptionChunks: 0,
+  diarizeChunkMs: 1000,
+  minDiarizeChunkBytes: 24000,
+  lastStreamingFinalText: "",
+  streamingFinalHistory: [],
+  pendingStreamingFinalKeys: new Set(),
+>>>>>>> Stashed changes
   meClusterId: null,
   knownClusters: [],
   diarizePcm: null,
@@ -158,7 +167,10 @@ function render() {
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
   renderSpeakerModeStatus();
   renderVoiceControls();
+<<<<<<< Updated upstream
   renderSwapControl();
+=======
+>>>>>>> Stashed changes
   renderBackendStatus();
 
   elements.transcriptList.innerHTML = "";
@@ -186,10 +198,19 @@ function render() {
 }
 
 function renderSpeakerModeStatus() {
+  if (elements.swapSpeakerButton) {
+    const canSwap = state.speakerMode === "diarize" && state.active && state.knownClusters.length > 1;
+    elements.swapSpeakerButton.disabled = !canSwap;
+  }
+
   if (state.speakerMode === "diarize") {
     const providerName = "AssemblyAI";
     const pending = state.pendingTranscriptionChunks > 0 ? ` ${state.pendingTranscriptionChunks} chunk(s) diarizing.` : "";
+<<<<<<< Updated upstream
     elements.speakerModeStatus.textContent = `One-mic mode uses ${providerName} diarization to label Me/Them. First speaker = Me; tap Swap if reversed.${pending}`;
+=======
+    elements.speakerModeStatus.textContent = `One-mic mode uses ${providerName} speaker labels. First detected speaker is Me; use Swap if needed.${pending}`;
+>>>>>>> Stashed changes
     elements.liveSpeakerInput.disabled = true;
     return;
   }
@@ -205,6 +226,7 @@ function renderSpeakerModeStatus() {
   elements.liveSpeakerInput.disabled = false;
 }
 
+<<<<<<< Updated upstream
 function renderSwapControl() {
   if (elements.swapSpeakerButton) {
     const canSwap = state.speakerMode === "diarize" && state.active && state.knownClusters.length > 1;
@@ -212,6 +234,8 @@ function renderSwapControl() {
   }
 }
 
+=======
+>>>>>>> Stashed changes
 function renderVoiceControls() {
   const supported = Boolean(SpeechSynthesisUtterance && speechSynthesis);
   elements.spokenSuggestionsInput.disabled = !supported;
@@ -272,7 +296,13 @@ function startSession(event) {
   state.currentSuggestion = "";
   state.lastLens = "None";
   state.lastCoachRequestAt = 0;
+<<<<<<< Updated upstream
   state.lastCodewordAt = 0;
+=======
+  state.pendingStreamingFinalKeys.clear();
+  state.lastStreamingFinalText = "";
+  state.streamingFinalHistory = [];
+>>>>>>> Stashed changes
   state.meClusterId = null;
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
@@ -317,6 +347,12 @@ async function fetchHealth() {
   try {
     const response = await fetch("/api/health");
     state.health = await response.json();
+<<<<<<< Updated upstream
+=======
+    if (state.health.geminiQuotaRetryAt) {
+      state.geminiQuotaRetryAt = Date.parse(state.health.geminiQuotaRetryAt) || state.geminiQuotaRetryAt;
+    }
+>>>>>>> Stashed changes
   } catch {
     state.health = {
       ok: false,
@@ -346,7 +382,10 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
     text: cleanText,
     speaker: normalizedSpeaker,
     cluster: metadata.cluster || null,
+<<<<<<< Updated upstream
     turnOrder: Number.isInteger(metadata.turnOrder) ? metadata.turnOrder : null,
+=======
+>>>>>>> Stashed changes
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     codeword
   };
@@ -526,6 +565,10 @@ async function startDiarizedTranscription() {
     render();
 
     state.diarizeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+<<<<<<< Updated upstream
+=======
+    state.diarizeStreamStartedAt = performance.now();
+>>>>>>> Stashed changes
     state.diarizeSocket = createDiarizeSocket();
     // AssemblyAI streaming takes raw PCM16, so stream linear16 from an
     // AudioWorklet instead of Opus chunks from MediaRecorder.
@@ -551,9 +594,102 @@ async function startDiarizedTranscription() {
 }
 
 
+<<<<<<< Updated upstream
 // Stream raw 16 kHz mono PCM16 from a media stream to a transcription websocket.
 // Returns a handle so several streams (e.g. mic + shared audio) can run at once.
 async function startPcmStream(stream, socket) {
+=======
+  recorder.ondataavailable = (event) => {
+    if (event.data?.size > 0 && state.active && !state.paused) {
+      sendDiarizeChunk(event.data);
+    }
+  };
+
+  recorder.onerror = () => {
+    state.lastSuggestion = "One-mic diarization recording failed.";
+    render();
+  };
+
+  return recorder;
+}
+
+function createSourceRecorder(stream, speaker) {
+  const audioTracks = stream.getAudioTracks();
+  if (audioTracks.length === 0) return null;
+
+  const audioOnlyStream = new MediaStream(audioTracks);
+  const recorder = new MediaRecorder(audioOnlyStream, getRecorderOptions());
+
+  recorder.ondataavailable = (event) => {
+    if (event.data?.size > 0 && state.active && !state.paused) {
+      sendAudioChunk(event.data, speaker);
+    }
+  };
+
+  recorder.onerror = () => {
+    state.lastSuggestion = `${getSpeakerLabel(speaker)} audio recording failed.`;
+    render();
+  };
+
+  return recorder;
+}
+
+function getRecorderOptions() {
+  const supportedTypes = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg"
+  ];
+  const mimeType = supportedTypes.find((type) => MediaRecorder.isTypeSupported(type));
+  return mimeType ? { mimeType } : undefined;
+}
+
+async function sendAudioChunk(blob, speaker) {
+  if (state.geminiQuotaRetryAt > Date.now()) {
+    state.liveTranscript = "Gemini quota is exhausted, so backend transcription is paused. Use manual labels or one-mic diarization.";
+    render();
+    return;
+  }
+
+  state.pendingTranscriptionChunks += 1;
+  state.liveTranscript = `Transcribing ${getSpeakerLabel(speaker)} audio...`;
+  render();
+
+  try {
+    const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+    const formData = new FormData();
+    formData.append("speaker", normalizeSpeaker(speaker));
+    formData.append("audio", blob, `${speaker}.${extension}`);
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 429 && payload.code === "GEMINI_QUOTA_EXHAUSTED") {
+        state.geminiQuotaRetryAt = Date.parse(payload.retryAt || "") || Date.now() + 60_000;
+      }
+      throw new Error(payload.error || "Transcription failed.");
+    }
+
+    if (payload.text?.trim()) {
+      addTranscriptLine(payload.text, payload.speaker);
+    }
+  } catch (error) {
+    state.lastSuggestion = error.message || "Automatic transcription failed.";
+    render();
+  } finally {
+    state.pendingTranscriptionChunks = Math.max(0, state.pendingTranscriptionChunks - 1);
+    render();
+  }
+}
+
+// Stream raw 16 kHz mono PCM16 from the mic to the diarization websocket.
+async function startDiarizePcm(stream, socket) {
+>>>>>>> Stashed changes
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const context = new AudioContextClass();
   if (context.state === "suspended") await context.resume().catch(() => {});
@@ -565,7 +701,16 @@ async function startPcmStream(stream, socket) {
   sink.gain.value = 0;
   const inputRate = context.sampleRate;
 
+<<<<<<< Updated upstream
   const pcm = { context, node, source, sink, sampleRate: 16000 };
+=======
+  state.diarizePcm = {
+    context,
+    node,
+    source,
+    sink
+  };
+>>>>>>> Stashed changes
 
   node.port.onmessage = (event) => {
     if (!state.active || state.paused) return;
@@ -590,6 +735,10 @@ function stopPcmStream(pcm) {
   } catch {
     // ignore teardown errors
   }
+<<<<<<< Updated upstream
+=======
+  state.diarizePcm = null;
+>>>>>>> Stashed changes
 }
 
 // Nearest-neighbour downsample to 16 kHz (good enough for speech + diarization).
@@ -725,11 +874,17 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
   }
 }
 
+<<<<<<< Updated upstream
 // Record a completed turn as one transcript line per speaker run. Called once
 // per turn — on its formatted final only — so a turn is never committed twice.
 function commitFinalStreamingSegments(segments, meta = {}) {
   const text = segments.map((segment) => segment.text).join(" ").trim();
   if (!text) return;
+=======
+async function commitFinalStreamingSegments(segments) {
+  for (const segment of segments) {
+    let speaker;
+>>>>>>> Stashed changes
 
   // First chunk of the session is the spoken objective, not a transcript line.
   if (state.awaitingObjective) {
@@ -747,16 +902,25 @@ function appendTurnLines(segments, turnOrder) {
   segments.forEach((segment, index) => {
     let speaker;
     if (!segment.uncertain) {
+<<<<<<< Updated upstream
       // Confident run: AssemblyAI's cluster decides (first cluster = Me).
       speaker = segment.speaker === "them" ? "them" : "me";
       state.lastConfidentSpeaker = speaker;
     } else {
       // Provisional run: a turn-taking guess (a short reply is usually the
       // other person).
+=======
+      // Confident turn: AssemblyAI decides (first cluster = Me).
+      speaker = segment.speaker === "them" ? "them" : "me";
+      state.lastConfidentSpeaker = speaker;
+    } else {
+      // Short / unattributed turn: use a turn-taking guess.
+>>>>>>> Stashed changes
       speaker = guessShortTurnSpeaker();
     }
 
     state.lastDiarizedSpeaker = speaker;
+<<<<<<< Updated upstream
     const line = addTranscriptLine(segment.text, speaker, {
       // Uncertain runs carry no cluster, so Swap (which re-maps by cluster)
       // leaves their heuristic decision intact.
@@ -767,6 +931,70 @@ function appendTurnLines(segments, turnOrder) {
     if (line) lines.push(line);
   });
   return lines;
+=======
+    const duplicate = findDuplicateStreamingLine(segment);
+    if (duplicate) {
+      if (!segment.uncertain) {
+        registerCluster(segment.cluster);
+        duplicate.line.speaker = speaker;
+        duplicate.line.cluster = segment.cluster;
+      }
+      duplicate.entry.speaker = duplicate.line.speaker;
+      duplicate.entry.cluster = duplicate.line.cluster;
+      duplicate.entry.start = Number.isFinite(segment.start) ? segment.start : duplicate.entry.start;
+      duplicate.entry.end = Number.isFinite(segment.end) ? segment.end : duplicate.entry.end;
+      render();
+      continue;
+    }
+
+    const line = addTranscriptLine(segment.text, speaker, {
+      // Uncertain turns carry no cluster, so Swap (which re-maps by cluster)
+      // leaves their heuristic decision intact.
+      cluster: segment.uncertain ? null : segment.cluster
+    });
+    if (line) rememberStreamingFinal(segment, line);
+  }
+>>>>>>> Stashed changes
+}
+
+function findDuplicateStreamingLine(segment) {
+  const textKey = normalizeTranscriptFingerprint(segment.text);
+  if (!textKey) return null;
+  const now = performance.now();
+  state.streamingFinalHistory = state.streamingFinalHistory.filter((entry) => now - entry.seenAt < 20_000);
+
+  return state.streamingFinalHistory.find((entry) => {
+    if (entry.textKey !== textKey) return false;
+    if (Number.isFinite(segment.start) && Number.isFinite(segment.end) && Number.isFinite(entry.start) && Number.isFinite(entry.end)) {
+      return rangesOverlap(segment.start, segment.end, entry.start, entry.end, 0.8);
+    }
+    return now - entry.seenAt < 4_000;
+  }) || null;
+}
+
+function rememberStreamingFinal(segment, line) {
+  state.streamingFinalHistory.push({
+    textKey: normalizeTranscriptFingerprint(segment.text),
+    start: Number.isFinite(segment.start) ? segment.start : null,
+    end: Number.isFinite(segment.end) ? segment.end : null,
+    speaker: line.speaker,
+    cluster: line.cluster,
+    line,
+    seenAt: performance.now()
+  });
+  state.streamingFinalHistory = state.streamingFinalHistory.slice(-24);
+}
+
+function normalizeTranscriptFingerprint(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function rangesOverlap(startA, endA, startB, endB, tolerance = 0) {
+  return Math.max(startA, startB) <= Math.min(endA, endB) + tolerance;
 }
 
 // A short reply usually comes from the other person than whoever just held the
@@ -812,7 +1040,17 @@ function swapMeThem() {
 }
 
 function containsWakeWord(text) {
+<<<<<<< Updated upstream
   return textContainsWakeWord(text, state.wakeWord);
+=======
+  return text.toLowerCase().includes(state.wakeWord.toLowerCase());
+}
+
+function normalizeSpeaker(value) {
+  if (value === "unknown") return "unknown";
+  if (value === "them") return "them";
+  return "me";
+>>>>>>> Stashed changes
 }
 
 function getSpeakerLabel(speaker) {
@@ -1210,6 +1448,11 @@ function deleteSessionData() {
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
+<<<<<<< Updated upstream
+=======
+  state.pendingStreamingFinalKeys.clear();
+  state.streamingFinalHistory = [];
+>>>>>>> Stashed changes
   elements.partnerInput.value = "";
   elements.liveSpeakerInput.value = "me";
   elements.manualSpeakerInput.value = "me";
@@ -1274,6 +1517,12 @@ function stopDiarizedTranscription() {
   state.diarizeRecorder = null;
   state.diarizeStream = null;
   state.diarizeSocket = null;
+<<<<<<< Updated upstream
+=======
+  state.lastStreamingFinalText = "";
+  state.pendingStreamingFinalKeys.clear();
+  state.streamingFinalHistory = [];
+>>>>>>> Stashed changes
   state.pendingTranscriptionChunks = 0;
 }
 

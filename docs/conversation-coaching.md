@@ -20,7 +20,11 @@ During the conversation, transcript lines are labeled as:
 - `Me`: the EarBud user.
 - `Them`: the conversation partner or other person.
 
+<<<<<<< Updated upstream
 One-mic mode uses AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices are `Them` (with short unattributed turns resolved by a turn-taking guess). Automatic call mode labels the microphone as `Me` and shared tab/window/system audio as `Them`. Manual mode uses user-selected labels. The coach uses those labels to decide what the user should say or do next.
+=======
+One-mic mode uses AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices are `Them`. Short unattributed turns use a simple turn-taking guess. Automatic call mode labels the microphone as `Me` and shared tab/window/system audio as `Them`. Manual mode uses user-selected labels. The coach uses those labels to decide what the user should say or do next.
+>>>>>>> Stashed changes
 
 Example:
 

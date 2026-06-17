@@ -22,3 +22,11 @@ services:
         value: gpt-4o-mini-transcribe
       - key: ASSEMBLYAI_MAX_SPEAKERS
         value: "2"
+      # Turn endpointing — tuned snappier than code defaults (0.8 / 1000 / 3000)
+      # so the coach reacts faster. Keep in sync with local .env.
+      - key: ASSEMBLYAI_EOT_CONFIDENCE
+        value: "0.6"
+      - key: ASSEMBLYAI_MIN_SILENCE
+        value: "500"
+      - key: ASSEMBLYAI_MAX_SILENCE
+        value: "1600"

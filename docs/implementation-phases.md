@@ -101,7 +101,11 @@ Current status:
 - Automatic call mode labels microphone audio as `Me` and shared tab/window/system audio as `Them`.
 - Online call mode streams the mic and shared audio to AssemblyAI on separate non-diarized connections (`/api/diarize-stream?diarize=0`), labeling each by source.
 - One-mic speaker diarization is available through AssemblyAI streaming at `/api/diarize-stream`.
+<<<<<<< Updated upstream
 - AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by a turn-taking guess.
+=======
+- AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`; short unattributed turns use a turn-taking fallback.
+>>>>>>> Stashed changes
 
 ## Phase 4: Strategy Coach Interaction Layer
 
