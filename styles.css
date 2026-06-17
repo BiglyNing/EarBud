@@ -546,18 +546,18 @@ textarea:focus {
   margin-bottom: 14px;
 }
 
-.voice-calibration {
+.speaker-tools {
   display: grid;
   gap: 8px;
   align-items: center;
   margin: 8px 0;
 }
 
-.voice-calibration .secondary-action {
+.speaker-tools .secondary-action {
   justify-self: start;
 }
 
-.voice-calibration .helper-text {
+.speaker-tools .helper-text {
   margin: 0;
 }
 
