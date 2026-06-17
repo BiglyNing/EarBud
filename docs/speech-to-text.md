@@ -32,11 +32,7 @@ Me: I wanted to ask about the deadline.
 Them: I do not think we can move it.
 ```
 
-<<<<<<< Updated upstream
 This is source separation, not speaker diarization. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately. Streaming each source (rather than uploading short audio chunks) keeps words intact and avoids the latency and fragmentation of chunked batch transcription.
-=======
-This is source separation, not voice identification. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately.
->>>>>>> Stashed changes
 
 ## One-Mic Diarization
 
@@ -61,20 +57,12 @@ AssemblyAI is the sole speaker source. The first speaker EarBud hears is labeled
 
 AssemblyAI cannot attribute turns shorter than about one second (single-word replies, cold start), and returns those as `UNKNOWN`. EarBud never shows `Unknown`: such turns are resolved with a turn-taking guess so every line is `Me` or `Them`.
 
-<<<<<<< Updated upstream
 1. A short reply is assumed to come from the other person than whoever just held the floor.
 2. With no context yet, it defaults to `Me`.
 
 Confident turns always come straight from AssemblyAI; the turn-taking guess is used **only** for these short/uncertain turns.
 
 This relies on AssemblyAI for live words, timing, and the main speaker split. Diarization can still struggle with heavy overlap, single-word interjections, or noisy rooms.
-=======
-1. If AssemblyAI confidently attributes the turn, EarBud uses that speaker cluster.
-2. If AssemblyAI marks the turn as unattributed, EarBud applies a turn-taking guess: a short reply is assumed to come from the other person than whoever just held the floor.
-3. With no context yet, it defaults to `Me`.
-
-Confident turns always come straight from AssemblyAI. Diarization can still struggle with heavy overlap, single-word interjections, or noisy rooms.
->>>>>>> Stashed changes
 
 ## Speaker Labels
 
@@ -85,11 +73,7 @@ EarBud currently uses two speaker labels:
 - `Me`: the EarBud user.
 - `Them`: the conversation partner or other person.
 
-<<<<<<< Updated upstream
 In one-mic mode these labels come from AssemblyAI's speaker split (first speaker = `Me`), with short turns resolved by a turn-taking fallback. In manual mode, live microphone transcription defaults to `Me`, but the user can change the live mic speaker selector before speaking. Typed transcript input also has a speaker selector so test conversations can include both sides.
-=======
-In one-mic mode these labels come from AssemblyAI's speaker split (first speaker = `Me`), with short unattributed turns resolved by the turn-taking fallback. In manual mode, live microphone transcription defaults to `Me`, but the user can change the live mic speaker selector before speaking. Typed transcript input also has a speaker selector so test conversations can include both sides.
->>>>>>> Stashed changes
 
 These labels are sent to the coach so suggestions are aimed at what `Me` should say or do next, based on the user's stated objective and what `Them` has said.
 

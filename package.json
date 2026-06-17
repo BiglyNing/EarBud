@@ -8,12 +8,8 @@
   },
   "scripts": {
     "start": "node server.js",
-<<<<<<< Updated upstream
     "dev": "node --watch server.js",
     "test": "node --test"
-=======
-    "dev": "node --watch server.js"
->>>>>>> Stashed changes
   },
   "dependencies": {
     "dotenv": "^16.4.7",

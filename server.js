@@ -1,10 +1,7 @@
 import "dotenv/config";
 import http from "http";
-<<<<<<< Updated upstream
 import path from "path";
 import { fileURLToPath } from "url";
-=======
->>>>>>> Stashed changes
 import express from "express";
 import WebSocket, { WebSocketServer } from "ws";
 import OpenAI from "openai";
@@ -23,7 +20,6 @@ const port = Number(process.env.PORT || 3000);
 // AssemblyAI handles all live transcription: one-mic diarization and the
 // Online call mode's two single-speaker streams.
 const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY || "";
-<<<<<<< Updated upstream
 
 // OpenAI powers the conversation coach.
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
@@ -40,15 +36,6 @@ const coachReasoningEffort = REASONING_EFFORTS.has(process.env.OPENAI_REASONING_
 function resolveCoachModel(requested) {
   return COACH_MODELS.has(requested) ? requested : defaultCoachModel;
 }
-=======
-let geminiQuotaLimitedUntil = 0;
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 24 * 1024 * 1024
-  }
-});
->>>>>>> Stashed changes
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
@@ -58,15 +45,9 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     agentReady: Boolean(openai),
     diarizationReady: Boolean(assemblyAiApiKey),
-<<<<<<< Updated upstream
     model: defaultCoachModel,
     coachModels: [...COACH_MODELS],
     reasoningEffort: coachReasoningEffort
-=======
-    model,
-    geminiQuotaLimited: Boolean(quotaLimit),
-    geminiQuotaRetryAt: quotaLimit?.retryAt || null
->>>>>>> Stashed changes
   });
 });
 
@@ -324,77 +305,6 @@ function assemblySpeakerCluster(label) {
   return index >= 0 ? `speaker_${index}` : null;
 }
 
-<<<<<<< Updated upstream
-=======
-app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
-  if (!client) {
-    res.status(503).json({
-      error: "GEMINI_API_KEY is not set. Add it to your environment or .env file to enable transcription."
-    });
-    return;
-  }
-
-  const quotaLimit = getGeminiQuotaLimit();
-  if (quotaLimit) {
-    res.status(429).json({
-      code: "GEMINI_QUOTA_EXHAUSTED",
-      error: "Gemini quota is exhausted, so backend transcription is paused.",
-      retryAt: quotaLimit.retryAt
-    });
-    return;
-  }
-
-  if (!req.file?.buffer) {
-    res.status(400).json({ error: "Audio file is required." });
-    return;
-  }
-
-  const speaker = req.body?.speaker === "them" ? "them" : "me";
-
-  try {
-    const response = await client.models.generateContent({
-      model,
-      contents: [
-        {
-          text: [
-            "Transcribe this audio chunk.",
-            "Return only the spoken words.",
-            "If there is no clear speech, return an empty string.",
-            "Do not add speaker labels, commentary, punctuation explanations, or markdown."
-          ].join(" ")
-        },
-        {
-          inlineData: {
-            mimeType: req.file.mimetype || "audio/webm",
-            data: req.file.buffer.toString("base64")
-          }
-        }
-      ]
-    });
-
-    res.json({
-      speaker,
-      text: cleanTranscription(response.text)
-    });
-  } catch (error) {
-    if (isGeminiQuotaError(error)) {
-      const retryAt = setGeminiQuotaLimit(error);
-      res.status(429).json({
-        code: "GEMINI_QUOTA_EXHAUSTED",
-        error: "Gemini quota is exhausted, so backend transcription is paused.",
-        retryAt
-      });
-      return;
-    }
-
-    console.error("Transcription failed:", error);
-    res.status(500).json({
-      error: "Gemini failed to transcribe this audio chunk."
-    });
-  }
-});
-
->>>>>>> Stashed changes
 app.post("/api/coach", async (req, res) => {
   if (!openai) {
     res.status(503).json({
@@ -529,37 +439,6 @@ function parseJsonMessage(message) {
   }
 }
 
-<<<<<<< Updated upstream
-=======
-function parseAgentJson(text) {
-  const fallback = {
-    phase: "Guiding",
-    state: "Listen",
-    shouldChimeIn: false,
-    suggestion: text?.trim() || "Stay quiet for now and keep listening for the next useful opening.",
-    followUp: null
-  };
-
-  if (!text) return fallback;
-
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return fallback;
-
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      phase: typeof parsed.phase === "string" ? parsed.phase : fallback.phase,
-      state: typeof parsed.state === "string" ? parsed.state : fallback.state,
-      shouldChimeIn: typeof parsed.shouldChimeIn === "boolean" ? parsed.shouldChimeIn : fallback.shouldChimeIn,
-      suggestion: typeof parsed.suggestion === "string" ? parsed.suggestion : fallback.suggestion,
-      followUp: typeof parsed.followUp === "string" && parsed.followUp.trim() ? parsed.followUp : null
-    };
-  } catch {
-    return fallback;
-  }
-}
-
->>>>>>> Stashed changes
 let startupFailed = false;
 
 function handleServerError(error) {
@@ -584,13 +463,7 @@ server.listen(port, () => {
     ? `OpenAI coach enabled (default ${defaultCoachModel}, switchable to ${[...COACH_MODELS].join("/")}).`
     : "OpenAI coach disabled: OPENAI_API_KEY is not set.");
   console.log(assemblyAiApiKey
-<<<<<<< Updated upstream
     ? `AssemblyAI transcription enabled (${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"}): one-mic diarization + Online call dual-stream.`
     : "AssemblyAI transcription disabled: set ASSEMBLYAI_API_KEY.");
 });
 
-=======
-    ? `Streaming diarization: AssemblyAI ${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"} (speaker_labels enabled).`
-    : "Streaming diarization disabled: set ASSEMBLYAI_API_KEY.");
-});
->>>>>>> Stashed changes
