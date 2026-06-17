@@ -30,7 +30,7 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 
 - Update the backend prompt for objective-completion coaching. Status: complete.
 - Add strategic lenses for negotiation, positioning, human behavior, execution, and focus. Status: complete, expanded into a tactics library (`coachingPrinciples.js`).
-- Run the coach on OpenAI (`gpt-5-nano` default / `gpt-5-mini`, user-selectable), with audio transcription kept on Gemini. Status: complete.
+- Run the coach on OpenAI (`gpt-5-mini` default / `gpt-5-nano`, user-selectable). All transcription runs on AssemblyAI streaming. Status: complete.
 - Return structured state, suggestion, and follow-up data via strict JSON schema. Status: complete.
 - Add a cooldown to prevent too many interruptions. Status: complete.
 - Improve safety evaluation for coercive or deceptive advice. Status: complete in basic local form.
@@ -68,4 +68,4 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 - What cooldown prevents distraction without missing important openings?
 - How should EarBud handle multiple speakers in the transcript?
 - What is the best first user segment?
-- Resolved: the coach runs on OpenAI (`gpt-5-nano`/`gpt-5-mini`, user-selectable) and audio transcription stays on Gemini. Open follow-up: should the transcription provider also become configurable (e.g. OpenAI/AssemblyAI), so Gemini can be dropped entirely?
+- Resolved: the coach runs on OpenAI (`gpt-5-mini`/`gpt-5-nano`, user-selectable). All live transcription runs on AssemblyAI streaming — one-mic mode (diarized) and Online call mode (mic + shared audio on separate non-diarized streams). Gemini has been removed entirely.

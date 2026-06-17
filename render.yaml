@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: earbud
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ASSEMBLYAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-mini
+      - key: OPENAI_REASONING_EFFORT
+        value: minimal
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: gpt-4o-mini-transcribe
+      - key: ASSEMBLYAI_MAX_SPEAKERS
+        value: "2"

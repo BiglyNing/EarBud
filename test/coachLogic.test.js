@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   getSpeakerLabel,
-  cleanTranscription,
   findSafetyIssue,
   createLocalCoachSuggestion,
   parseAgentJson
@@ -15,14 +14,6 @@ test("getSpeakerLabel maps known ids and defaults the rest to Me", () => {
   assert.equal(getSpeakerLabel("speaker_1"), "Speaker 1");
   assert.equal(getSpeakerLabel("me"), "Me");
   assert.equal(getSpeakerLabel(undefined), "Me");
-});
-
-test("cleanTranscription strips quotes, prefixes, and rejects code fences", () => {
-  assert.equal(cleanTranscription('  "hello there"  '), "hello there");
-  assert.equal(cleanTranscription("Transcript: we should meet"), "we should meet");
-  assert.equal(cleanTranscription("```let's go```"), "");
-  assert.equal(cleanTranscription(""), "");
-  assert.equal(cleanTranscription(null), "");
 });
 
 test("findSafetyIssue trips only on serious, unambiguous harm", () => {

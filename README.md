@@ -89,7 +89,7 @@ This repo includes a browser-based prototype and a Node backend agent:
 - Browser speech recognition when supported by the browser.
 - Speaker-labeled transcripts for `Me` and `Them`.
 - One-mic speaker diarization with AssemblyAI (Universal-3 Pro streaming); the first speaker is `Me` and other voices are `Them`, with a turn-taking guess for short unattributed replies.
-- Automatic call mode where microphone audio is `Me` and shared tab/system audio is `Them`.
+- Online call mode where the microphone (`Me`) and shared tab/system audio (`Them`) are each streamed to AssemblyAI on their own connection — no diarization needed, since each stream is one known speaker.
 - Typed transcript fallback for testing.
 - Backend coaching suggestions powered by OpenAI, shaped by the strategy library, with per-session model choice (`gpt-5-nano` / `gpt-5-mini`) and a speed/quality control.
 - A consent gate and privacy disclosure required before a session can start.
@@ -114,15 +114,13 @@ npm install
 
 Create a `.env` file using [.env.example](.env.example), then set the keys for the features you want:
 
-- `OPENAI_API_KEY` — powers the **conversation coach** (required for model suggestions). Optional `OPENAI_MODEL` (`gpt-5-nano` default or `gpt-5-mini`) and `OPENAI_REASONING_EFFORT` (`minimal` default; raise for sharper but slower advice). Both are also selectable per session in the UI.
-- `GEMINI_API_KEY` — powers backend **audio transcription** only, used by the "Online call" speaker mode. Not needed if you only use one-mic (AssemblyAI) or manual modes.
-- `ASSEMBLYAI_API_KEY` — powers one-mic streaming **diarization**.
+- `OPENAI_API_KEY` — powers the **conversation coach**. Optional `OPENAI_MODEL` (`gpt-5-mini` default or `gpt-5-nano`) and `OPENAI_REASONING_EFFORT` (`minimal` default; raise for sharper but slower advice); both are also selectable per session in the UI.
+- `ASSEMBLYAI_API_KEY` — powers all live **transcription**: one-mic streaming diarization and the "Online call" mode (mic and shared audio streamed separately, no diarization needed).
 
 Create keys here:
 
 ```text
 OpenAI:     https://platform.openai.com/api-keys
-Gemini:     https://aistudio.google.com/apikey
 AssemblyAI: https://www.assemblyai.com/app
 ```
 
@@ -144,9 +142,35 @@ Run the automated tests anytime with:
 npm test
 ```
 
+## Deploy on Render
+
+EarBud currently deploys as one Render **Web Service**. The Node server serves both the backend API/WebSocket routes and the static frontend files, so you do not need a separate Render Static Site unless the frontend is later rebuilt as its own Vite/React/etc. app.
+
+This repo includes [render.yaml](render.yaml), which Render can use as a Blueprint.
+
+1. Push this repo to GitHub, GitLab, or Bitbucket.
+2. In Render, create a new Blueprint from the repo. Render looks for `render.yaml` at the repo root.
+3. When Render asks for unsynced environment variables, set:
+   - `OPENAI_API_KEY`
+   - `ASSEMBLYAI_API_KEY`
+4. Deploy the service.
+
+The Blueprint uses:
+
+```text
+Build Command: npm ci
+Start Command: npm start
+Health Check:  /api/health
+Node:          22.x
+```
+
+You can also create it manually in Render with **New > Web Service** and the same commands. Render provides the `PORT` environment variable automatically; `server.js` already reads `process.env.PORT`, which is required for Render web services.
+
+The free Render instance type is okay for testing, but live transcription/coaching can feel slow after cold starts. Use a paid instance for serious demos or real-time usage.
+
 The app is intended to run locally on your machine. Do not expose the local server publicly unless you have added proper authentication, consent flows, and production security controls.
 
-The coach is low-cost on `gpt-5-nano`, but it is a paid API — check current OpenAI pricing and your usage limits. Gemini (transcription) and the providers above may use inputs per their own terms; review them before using sensitive data or sharing the app.
+OpenAI (coach) and AssemblyAI (all transcription) are paid APIs — check current pricing and your usage limits, and review each provider's data-use terms before using sensitive data or sharing the app. The coach is low-cost on `gpt-5-nano`; `gpt-5-mini` is sharper but costs more.
 
 For one-mic automatic speaker detection, set `ASSEMBLYAI_API_KEY`. AssemblyAI streaming diarization provides the live words, timing, and speaker split (first speaker = `Me`). Short, unattributed single-word turns fall back to a turn-taking guess, and you can tap Swap if `Me` / `Them` end up reversed.
 

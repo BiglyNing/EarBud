@@ -50,9 +50,11 @@ const state = {
   themStream: null,
   diarizeStream: null,
   diarizeSocket: null,
-  micRecorder: null,
-  themRecorder: null,
   diarizeRecorder: null,
+  micSocket: null,
+  themSocket: null,
+  micPcm: null,
+  themPcm: null,
   pendingTranscriptionChunks: 0,
   diarizeChunkMs: 1000,
   minDiarizeChunkBytes: 24000,
@@ -65,8 +67,7 @@ const state = {
   lastCoachRequestAt: 0,
   coachCooldownMs: 6000,
   lastCodewordAt: 0,
-  codewordCooldownMs: 2500,
-  geminiQuotaRetryAt: 0
+  codewordCooldownMs: 2500
 };
 
 const elements = {
@@ -316,9 +317,6 @@ async function fetchHealth() {
   try {
     const response = await fetch("/api/health");
     state.health = await response.json();
-    if (state.health.geminiQuotaRetryAt) {
-      state.geminiQuotaRetryAt = Date.parse(state.health.geminiQuotaRetryAt) || state.geminiQuotaRetryAt;
-    }
   } catch {
     state.health = {
       ok: false,
@@ -401,8 +399,8 @@ function setSpokenObjective(text) {
 }
 
 async function startSourceSeparatedTranscription() {
-  if (!state.health?.agentReady) {
-    state.lastSuggestion = "Automatic speaker mode needs GEMINI_API_KEY for backend transcription. Falling back to manual browser transcription.";
+  if (!state.health?.diarizationReady) {
+    state.lastSuggestion = "Online call mode needs ASSEMBLYAI_API_KEY for streaming transcription. Falling back to manual browser transcription.";
     state.speakerMode = "manual";
     elements.speakerModeInput.value = "manual";
     startContinuousListening();
@@ -410,8 +408,8 @@ async function startSourceSeparatedTranscription() {
     return;
   }
 
-  if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices?.getDisplayMedia || typeof MediaRecorder === "undefined") {
-    state.lastSuggestion = "Automatic speaker mode needs microphone, screen audio sharing, and MediaRecorder support. Use manual mode in this browser.";
+  if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices?.getDisplayMedia || typeof AudioWorkletNode === "undefined") {
+    state.lastSuggestion = "Online call mode needs microphone, screen-audio sharing, and AudioWorklet support. Use Chrome or Edge, or switch to manual mode.";
     state.speakerMode = "manual";
     elements.speakerModeInput.value = "manual";
     startContinuousListening();
@@ -429,28 +427,79 @@ async function startSourceSeparatedTranscription() {
       audio: true
     });
 
-    if (state.themStream.getAudioTracks().length === 0) {
-      state.liveTranscript = "Shared source has no audio. Mic will transcribe as Me; choose Share tab audio for Them.";
+    // Me: mic → its own streaming-transcription socket (one known speaker).
+    state.micSocket = createTranscriptionSocket("me");
+    state.micPcm = await startPcmStream(state.micStream, state.micSocket);
+
+    // Them: shared-tab audio → its own socket, if the share included audio.
+    const themAudioTracks = state.themStream.getAudioTracks();
+    if (themAudioTracks.length > 0) {
+      state.themSocket = createTranscriptionSocket("them");
+      state.themPcm = await startPcmStream(new MediaStream(themAudioTracks), state.themSocket);
     }
 
-    state.micRecorder = createSourceRecorder(state.micStream, "me");
-    state.themRecorder = state.themStream.getAudioTracks().length > 0
-      ? createSourceRecorder(state.themStream, "them")
-      : null;
-
-    state.micRecorder?.start(5000);
-    state.themRecorder?.start(5000);
     state.listening = true;
-    state.liveTranscript = "Automatic speaker mode is listening: mic = Me, shared audio = Them.";
+    state.liveTranscript = themAudioTracks.length > 0
+      ? "Online call mode listening: mic = Me, shared audio = Them."
+      : "Listening to mic as Me. Shared source had no audio — re-share and pick 'Share tab audio' for Them.";
     render();
   } catch (error) {
+    console.error("[source] start failed:", error);
     stopSourceSeparatedTranscription();
     state.speakerMode = "manual";
     elements.speakerModeInput.value = "manual";
-    state.lastSuggestion = "Automatic speaker setup was cancelled or unavailable. Falling back to manual browser transcription.";
+    state.lastSuggestion = "Online call setup was cancelled or unavailable. Falling back to manual browser transcription.";
     startContinuousListening();
     render();
   }
+}
+
+// One streaming socket per known source. Diarization is off (diarize=0): every
+// turn is attributed to the fixed `speaker` for this socket.
+function createTranscriptionSocket(speaker) {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(`${protocol}//${window.location.host}/api/diarize-stream?diarize=0`);
+  socket.binaryType = "arraybuffer";
+  const who = getSpeakerLabel(speaker);
+
+  socket.addEventListener("message", (event) => {
+    const payload = parseSocketPayload(event.data);
+    if (!payload) return;
+
+    if (payload.type === "transcript" && Array.isArray(payload.segments)) {
+      const text = payload.segments
+        .map((segment) => String(segment.text || "").trim())
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (!text) return;
+
+      // Commit only on the formatted final so a turn is never recorded twice.
+      if (payload.isFinal && payload.isFormatted) {
+        if (state.awaitingObjective) {
+          setSpokenObjective(text);
+        } else {
+          addTranscriptLine(text, speaker, { turnOrder: payload.turnOrder });
+        }
+      } else {
+        state.liveTranscript = `Hearing (${who}): ${text}`;
+        render();
+      }
+      return;
+    }
+
+    if (payload.type === "error") {
+      state.lastSuggestion = payload.error || "Streaming transcription failed.";
+      render();
+    }
+  });
+
+  socket.addEventListener("error", () => {
+    state.lastSuggestion = "Could not connect to the local transcription stream.";
+    render();
+  });
+
+  return socket;
 }
 
 async function startDiarizedTranscription() {
@@ -480,7 +529,7 @@ async function startDiarizedTranscription() {
     state.diarizeSocket = createDiarizeSocket();
     // AssemblyAI streaming takes raw PCM16, so stream linear16 from an
     // AudioWorklet instead of Opus chunks from MediaRecorder.
-    await startDiarizePcm(state.diarizeStream, state.diarizeSocket);
+    state.diarizePcm = await startPcmStream(state.diarizeStream, state.diarizeSocket);
     state.listening = true;
     const providerName = "AssemblyAI";
     state.liveTranscript = `One-mic diarization is listening (${providerName}). First speaker = Me; tap Swap if reversed.`;
@@ -501,99 +550,10 @@ async function startDiarizedTranscription() {
   }
 }
 
-function createDiarizeRecorder(stream) {
-  const recorder = new MediaRecorder(stream, getRecorderOptions());
 
-  recorder.ondataavailable = (event) => {
-    if (event.data?.size > 0 && state.active && !state.paused) {
-      sendDiarizeChunk(event.data);
-    }
-  };
-
-  recorder.onerror = () => {
-    state.lastSuggestion = "One-mic diarization recording failed.";
-    render();
-  };
-
-  return recorder;
-}
-
-function createSourceRecorder(stream, speaker) {
-  const audioTracks = stream.getAudioTracks();
-  if (audioTracks.length === 0) return null;
-
-  const audioOnlyStream = new MediaStream(audioTracks);
-  const recorder = new MediaRecorder(audioOnlyStream, getRecorderOptions());
-
-  recorder.ondataavailable = (event) => {
-    if (event.data?.size > 0 && state.active && !state.paused) {
-      sendAudioChunk(event.data, speaker);
-    }
-  };
-
-  recorder.onerror = () => {
-    state.lastSuggestion = `${getSpeakerLabel(speaker)} audio recording failed.`;
-    render();
-  };
-
-  return recorder;
-}
-
-function getRecorderOptions() {
-  const supportedTypes = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/ogg"
-  ];
-  const mimeType = supportedTypes.find((type) => MediaRecorder.isTypeSupported(type));
-  return mimeType ? { mimeType } : undefined;
-}
-
-async function sendAudioChunk(blob, speaker) {
-  if (state.geminiQuotaRetryAt > Date.now()) {
-    state.liveTranscript = "Gemini quota is exhausted, so backend transcription is paused. Use manual labels or one-mic diarization.";
-    render();
-    return;
-  }
-
-  state.pendingTranscriptionChunks += 1;
-  state.liveTranscript = `Transcribing ${getSpeakerLabel(speaker)} audio...`;
-  render();
-
-  try {
-    const extension = blob.type.includes("ogg") ? "ogg" : "webm";
-    const formData = new FormData();
-    formData.append("speaker", normalizeSpeaker(speaker));
-    formData.append("audio", blob, `${speaker}.${extension}`);
-
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      if (response.status === 429 && payload.code === "GEMINI_QUOTA_EXHAUSTED") {
-        state.geminiQuotaRetryAt = Date.parse(payload.retryAt || "") || Date.now() + 60_000;
-      }
-      throw new Error(payload.error || "Transcription failed.");
-    }
-
-    if (payload.text?.trim()) {
-      addTranscriptLine(payload.text, payload.speaker);
-    }
-  } catch (error) {
-    state.lastSuggestion = error.message || "Automatic transcription failed.";
-    render();
-  } finally {
-    state.pendingTranscriptionChunks = Math.max(0, state.pendingTranscriptionChunks - 1);
-    render();
-  }
-}
-
-// Stream raw 16 kHz mono PCM16 from the mic to the diarization websocket.
-async function startDiarizePcm(stream, socket) {
+// Stream raw 16 kHz mono PCM16 from a media stream to a transcription websocket.
+// Returns a handle so several streams (e.g. mic + shared audio) can run at once.
+async function startPcmStream(stream, socket) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const context = new AudioContextClass();
   if (context.state === "suspended") await context.resume().catch(() => {});
@@ -605,13 +565,7 @@ async function startDiarizePcm(stream, socket) {
   sink.gain.value = 0;
   const inputRate = context.sampleRate;
 
-  state.diarizePcm = {
-    context,
-    node,
-    source,
-    sink,
-    sampleRate: 16000
-  };
+  const pcm = { context, node, source, sink, sampleRate: 16000 };
 
   node.port.onmessage = (event) => {
     if (!state.active || state.paused) return;
@@ -623,10 +577,10 @@ async function startDiarizePcm(stream, socket) {
   source.connect(node);
   node.connect(sink);
   sink.connect(context.destination);
+  return pcm;
 }
 
-function stopDiarizePcm() {
-  const pcm = state.diarizePcm;
+function stopPcmStream(pcm) {
   if (!pcm) return;
   try {
     pcm.node?.disconnect();
@@ -636,7 +590,6 @@ function stopDiarizePcm() {
   } catch {
     // ignore teardown errors
   }
-  state.diarizePcm = null;
 }
 
 // Nearest-neighbour downsample to 16 kHz (good enough for speech + diarization).
@@ -1286,18 +1239,22 @@ function stopAllListening() {
 }
 
 function stopSourceSeparatedTranscription() {
-  [state.micRecorder, state.themRecorder].forEach((recorder) => {
-    if (recorder?.state === "recording") {
-      recorder.stop();
+  stopPcmStream(state.micPcm);
+  stopPcmStream(state.themPcm);
+  state.micPcm = null;
+  state.themPcm = null;
+
+  [state.micSocket, state.themSocket].forEach((socket) => {
+    if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+      socket.close();
     }
   });
+  state.micSocket = null;
+  state.themSocket = null;
 
   [state.micStream, state.themStream].forEach((stream) => {
     stream?.getTracks().forEach((track) => track.stop());
   });
-
-  state.micRecorder = null;
-  state.themRecorder = null;
   state.micStream = null;
   state.themStream = null;
   state.pendingTranscriptionChunks = 0;
@@ -1308,7 +1265,8 @@ function stopDiarizedTranscription() {
     state.diarizeRecorder.stop();
   }
 
-  stopDiarizePcm();
+  stopPcmStream(state.diarizePcm);
+  state.diarizePcm = null;
   state.diarizeStream?.getTracks().forEach((track) => track.stop());
   if (state.diarizeSocket?.readyState === WebSocket.OPEN || state.diarizeSocket?.readyState === WebSocket.CONNECTING) {
     state.diarizeSocket.close();

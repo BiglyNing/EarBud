@@ -2,8 +2,8 @@
 //
 // These functions have no side effects and no dependency on the running server,
 // so both server.js and the automated tests can import them directly. Keep
-// stateful or network-touching logic (Gemini quota tracking, API calls) in
-// server.js — only move things here that are deterministic and easy to test.
+// stateful or network-touching logic (API calls) in server.js — only move
+// things here that are deterministic and easy to test.
 
 // Map an internal speaker id onto the human label shown in the transcript.
 export function getSpeakerLabel(speaker) {
@@ -12,17 +12,6 @@ export function getSpeakerLabel(speaker) {
   if (speaker === "speaker_0") return "Speaker 0";
   if (speaker === "speaker_1") return "Speaker 1";
   return "Me";
-}
-
-// Strip the noise a transcription model sometimes adds (quotes, "Transcript:"
-// prefixes, stray code fences) so the transcript stays clean.
-export function cleanTranscription(text) {
-  const value = String(text || "").trim();
-  if (!value || /^```/.test(value)) return "";
-  return value
-    .replace(/^["']|["']$/g, "")
-    .replace(/^(transcription|transcript)\s*:\s*/i, "")
-    .trim();
 }
 
 // Backstop guardrail behind the coach's system prompt. The model handles the

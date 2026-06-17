@@ -109,10 +109,10 @@ The default should be short and non-disruptive.
 
 - UI: vanilla HTML, CSS, and browser JavaScript.
 - Server: local Node.js and Express.
-- Transcription: browser speech recognition, Gemini-backed source-separated transcription, AssemblyAI streaming diarization, or typed transcript input.
-- Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) with a turn-taking guess for short unattributed turns in one-mic mode; source-separated `Me` / `Them` labels in automatic call mode; user-selected `Me` / `Them` labels in manual mode.
-- Coach backend: OpenAI API when `OPENAI_API_KEY` is configured (`gpt-5-nano` / `gpt-5-mini`, selectable per session), shaped by the tactics library in `coachingPrinciples.js`. A deterministic local fallback in `coachLogic.js` answers when the backend is unavailable.
-- Transcription backend: Gemini API when `GEMINI_API_KEY` is configured (audio only; independent of the coach).
+- Transcription: browser speech recognition, AssemblyAI streaming (one-mic diarized, or Online call dual-stream), or typed transcript input.
+- Speaker attribution: AssemblyAI streaming diarization (first speaker = `Me`) with a turn-taking guess for short unattributed turns in one-mic mode; per-stream `Me` / `Them` labels in Online call mode (each source on its own socket); user-selected `Me` / `Them` labels in manual mode.
+- Coach backend: OpenAI API when `OPENAI_API_KEY` is configured (`gpt-5-mini` / `gpt-5-nano`, selectable per session), shaped by the tactics library in `coachingPrinciples.js`. A deterministic local fallback in `coachLogic.js` answers when the backend is unavailable.
+- Transcription backend: AssemblyAI streaming (`/api/diarize-stream`). One-mic mode enables speaker labels; Online call mode opens one socket per source with `diarize=0` (no speaker labels) since each stream is a single known speaker.
 - Storage: in-memory browser state for the active session; raw audio is never written to disk.
 
 ## Engineering Priorities

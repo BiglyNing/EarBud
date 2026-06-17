@@ -3,14 +3,11 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
-import multer from "multer";
 import WebSocket, { WebSocketServer } from "ws";
-import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { principles, formatPrinciples } from "./coachingPrinciples.js";
 import {
   getSpeakerLabel,
-  cleanTranscription,
   findSafetyIssue,
   createLocalCoachSuggestion,
   parseAgentJson
@@ -22,14 +19,12 @@ const app = express();
 const server = http.createServer(app);
 const port = Number(process.env.PORT || 3000);
 
-// Audio transcription stays on Gemini (untouched).
-const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+// AssemblyAI handles all live transcription: one-mic diarization and the
+// Online call mode's two single-speaker streams.
 const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY || "";
-let geminiQuotaLimitedUntil = 0;
 
-// Conversation coaching runs on OpenAI. The user may pick the model per session.
-const coachClient = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+// OpenAI powers the conversation coach.
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const COACH_MODELS = new Set(["gpt-5-mini", "gpt-5-nano"]);
 const defaultCoachModel = COACH_MODELS.has(process.env.OPENAI_MODEL) ? process.env.OPENAI_MODEL : "gpt-5-mini";
 // Reasoning models "think" before answering; less thinking = faster, more
@@ -44,30 +39,17 @@ function resolveCoachModel(requested) {
   return COACH_MODELS.has(requested) ? requested : defaultCoachModel;
 }
 
-// memoryStorage keeps uploaded audio in RAM for the duration of one request and
-// never writes it to disk — raw audio is not persisted anywhere on the server.
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 24 * 1024 * 1024
-  }
-});
-
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
 
 app.get("/api/health", (_req, res) => {
-  const quotaLimit = getGeminiQuotaLimit();
   res.json({
     ok: true,
-    agentReady: Boolean(coachClient),
-    transcriptionReady: Boolean(client),
+    agentReady: Boolean(openai),
     diarizationReady: Boolean(assemblyAiApiKey),
     model: defaultCoachModel,
     coachModels: [...COACH_MODELS],
-    reasoningEffort: coachReasoningEffort,
-    geminiQuotaLimited: Boolean(quotaLimit),
-    geminiQuotaRetryAt: quotaLimit?.retryAt || null
+    reasoningEffort: coachReasoningEffort
   });
 });
 
@@ -78,7 +60,7 @@ const diarizeStreamServer = new WebSocketServer({
 
 diarizeStreamServer.on("error", handleServerError);
 
-diarizeStreamServer.on("connection", (clientSocket) => {
+diarizeStreamServer.on("connection", (clientSocket, request) => {
   const sendClientEvent = (payload) => {
     if (clientSocket.readyState === WebSocket.OPEN) {
       clientSocket.send(JSON.stringify(payload));
@@ -88,26 +70,39 @@ diarizeStreamServer.on("connection", (clientSocket) => {
   if (!assemblyAiApiKey) {
     sendClientEvent({
       type: "error",
-      error: "ASSEMBLYAI_API_KEY is not set. Add it to enable one-mic diarization."
+      error: "ASSEMBLYAI_API_KEY is not set. Add it to enable streaming transcription."
     });
-    clientSocket.close(1011, "Diarization is not configured.");
+    clientSocket.close(1011, "Streaming transcription is not configured.");
     return;
   }
 
-  connectAssemblyAiStream(clientSocket, sendClientEvent);
+  // diarize=0 → single known speaker per stream (Online call mode uses one
+  // socket per source), so AssemblyAI speaker labeling is unnecessary.
+  let diarize = true;
+  try {
+    diarize = new URL(request.url, "http://localhost").searchParams.get("diarize") !== "0";
+  } catch {
+    diarize = true;
+  }
+
+  connectAssemblyAiStream(clientSocket, sendClientEvent, { diarize });
 });
 
 // Proxy the browser's raw PCM16 audio to AssemblyAI's v3 streaming endpoint and
 // translate its Turn events into the {type:"transcript", segments} contract the
 // client consumes.
-function connectAssemblyAiStream(clientSocket, sendClientEvent) {
+function connectAssemblyAiStream(clientSocket, sendClientEvent, { diarize = true } = {}) {
   const url = new URL("wss://streaming.assemblyai.com/v3/ws");
   // Universal-3 Pro is AssemblyAI's most accurate real-time model.
   url.searchParams.set("speech_model", process.env.ASSEMBLYAI_MODEL || "u3-rt-pro");
   url.searchParams.set("sample_rate", "16000");
   url.searchParams.set("encoding", "pcm_s16le");
-  url.searchParams.set("speaker_labels", "true");
-  url.searchParams.set("max_speakers", process.env.ASSEMBLYAI_MAX_SPEAKERS || "2");
+  // Diarization only matters for one-mic mode. Online call mode streams one
+  // known speaker per socket, so it disables speaker labels.
+  url.searchParams.set("speaker_labels", diarize ? "true" : "false");
+  if (diarize) {
+    url.searchParams.set("max_speakers", process.env.ASSEMBLYAI_MAX_SPEAKERS || "2");
+  }
   url.searchParams.set("format_turns", "true");
   // Turn endpointing. AssemblyAI's defaults (confidence 0.4, min silence 400ms,
   // max silence 1280ms) finalize a turn on brief pauses, cutting speakers off
@@ -150,6 +145,19 @@ function connectAssemblyAiStream(clientSocket, sendClientEvent) {
     if (payload.type === "Turn") {
       const text = String(payload.transcript || "").trim();
       if (!text) return;
+
+      // Single-speaker stream (Online call mode): emit the whole turn as one
+      // segment with no speaker — the client labels it by which socket it is.
+      if (!diarize) {
+        sendClientEvent({
+          type: "transcript",
+          isFinal: Boolean(payload.end_of_turn),
+          turnOrder: Number.isInteger(payload.turn_order) ? payload.turn_order : null,
+          isFormatted: Boolean(payload.turn_is_formatted),
+          segments: [{ speaker: null, text, start: null, end: null, words: [], uncertain: false }]
+        });
+        return;
+      }
 
       // null when AssemblyAI could not attribute the turn (too short / cold
       // start). Flag it as uncertain and carry the previous speaker only as a
@@ -299,78 +307,8 @@ function assemblySpeakerCluster(label) {
   return index >= 0 ? `speaker_${index}` : null;
 }
 
-app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
-  if (!client) {
-    res.status(503).json({
-      error: "GEMINI_API_KEY is not set. Add it to your environment or .env file to enable transcription."
-    });
-    return;
-  }
-
-  const quotaLimit = getGeminiQuotaLimit();
-  if (quotaLimit) {
-    res.status(429).json({
-      code: "GEMINI_QUOTA_EXHAUSTED",
-      error: "Gemini quota is exhausted, so backend transcription is paused.",
-      retryAt: quotaLimit.retryAt
-    });
-    return;
-  }
-
-  if (!req.file?.buffer) {
-    res.status(400).json({ error: "Audio file is required." });
-    return;
-  }
-
-  const speaker = req.body?.speaker === "them" ? "them" : "me";
-
-  try {
-    const response = await client.models.generateContent({
-      model,
-      contents: [
-        {
-          text: [
-            "Transcribe this audio chunk.",
-            "Return only the spoken words.",
-            "If there is no clear speech, return an empty string.",
-            "Do not add speaker labels, commentary, punctuation explanations, or markdown."
-          ].join(" ")
-        },
-        {
-          inlineData: {
-            mimeType: req.file.mimetype || "audio/webm",
-            data: req.file.buffer.toString("base64")
-          }
-        }
-      ]
-    });
-
-    res.json({
-      speaker,
-      text: cleanTranscription(response.text)
-    });
-  } catch (error) {
-    if (isGeminiQuotaError(error)) {
-      const retryAt = setGeminiQuotaLimit(error);
-      res.status(429).json({
-        code: "GEMINI_QUOTA_EXHAUSTED",
-        error: "Gemini quota is exhausted, so backend transcription is paused.",
-        retryAt
-      });
-      return;
-    }
-
-    // Log only the message, never the request/audio payload, to avoid leaking
-    // conversation content into server logs.
-    console.error("Transcription failed:", error?.message || error);
-    res.status(500).json({
-      error: "Gemini failed to transcribe this audio chunk."
-    });
-  }
-});
-
 app.post("/api/coach", async (req, res) => {
-  if (!coachClient) {
+  if (!openai) {
     res.status(503).json({
       error: "OPENAI_API_KEY is not set. Add it to your environment or .env file to enable the coaching agent."
     });
@@ -453,7 +391,7 @@ app.post("/api/coach", async (req, res) => {
   ].join("\n\n");
 
   try {
-    const completion = await coachClient.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: coachModel,
       reasoning_effort: reasoningEffort,
       max_completion_tokens: 4000,
@@ -495,102 +433,6 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
-function getGeminiQuotaLimit() {
-  if (Date.now() >= geminiQuotaLimitedUntil) {
-    geminiQuotaLimitedUntil = 0;
-    return null;
-  }
-
-  return {
-    retryAt: new Date(geminiQuotaLimitedUntil).toISOString()
-  };
-}
-
-function isGeminiQuotaError(error) {
-  return error?.status === 429 || /RESOURCE_EXHAUSTED|quota|rate limit/i.test(String(error?.message || error));
-}
-
-function setGeminiQuotaLimit(error) {
-  const retryMs = getGeminiRetryMs(error);
-  geminiQuotaLimitedUntil = Date.now() + retryMs;
-  const retryAt = new Date(geminiQuotaLimitedUntil).toISOString();
-  console.warn(`Gemini quota exhausted. Pausing Gemini calls until ${retryAt}.`);
-  return retryAt;
-}
-
-function getGeminiRetryMs(error) {
-  const message = String(error?.message || "");
-  const parsed = parseGeminiErrorMessage(message);
-  const retryDelay = parsed?.error?.details?.find((detail) => detail["@type"]?.includes("RetryInfo"))?.retryDelay;
-  const retryMs = parseRetryDelayMs(retryDelay);
-
-  if (retryMs > 1000) return retryMs;
-
-  const quotaIds = parsed?.error?.details
-    ?.flatMap((detail) => detail.violations || [])
-    ?.map((violation) => violation.quotaId || "")
-    ?.join(" ");
-
-  if (/PerDay|RequestsPerDay|RPD/i.test(quotaIds || message)) {
-    return Math.max(60_000, getNextPacificMidnightMs() - Date.now());
-  }
-
-  return 60_000;
-}
-
-function parseGeminiErrorMessage(message) {
-  const jsonStart = message.indexOf("{");
-  if (jsonStart === -1) return null;
-
-  try {
-    return JSON.parse(message.slice(jsonStart));
-  } catch {
-    return null;
-  }
-}
-
-function parseRetryDelayMs(value) {
-  const match = String(value || "").match(/^(\d+(?:\.\d+)?)s$/);
-  return match ? Math.round(Number(match[1]) * 1000) : 0;
-}
-
-function getNextPacificMidnightMs() {
-  const now = new Date();
-  const today = getPacificDateParts(now);
-  const target = new Date(Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day) + 1, 8));
-  const targetParts = getPacificDateParts(target);
-
-  for (let offsetMinutes = -720; offsetMinutes <= 720; offsetMinutes += 15) {
-    const candidate = new Date(target.getTime() + offsetMinutes * 60_000);
-    const parts = getPacificDateParts(candidate);
-    if (
-      parts.year === targetParts.year &&
-      parts.month === targetParts.month &&
-      parts.day === targetParts.day &&
-      parts.hour === "00" &&
-      parts.minute === "00"
-    ) {
-      return candidate.getTime();
-    }
-  }
-
-  return Date.now() + 24 * 60 * 60 * 1000;
-}
-
-function getPacificDateParts(date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(date);
-
-  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
-}
-
 function parseJsonMessage(message) {
   try {
     return JSON.parse(message.toString());
@@ -619,10 +461,11 @@ server.on("error", handleServerError);
 
 server.listen(port, () => {
   console.log(`EarBud running at http://localhost:${port}`);
-  console.log(coachClient ? `OpenAI conversation coach enabled (default ${defaultCoachModel}, switchable to ${[...COACH_MODELS].join("/")}).` : "OpenAI conversation coach disabled: OPENAI_API_KEY is not set.");
-  console.log(client ? `Gemini audio transcription enabled with ${model}.` : "Gemini audio transcription disabled: GEMINI_API_KEY is not set.");
+  console.log(openai
+    ? `OpenAI coach enabled (default ${defaultCoachModel}, switchable to ${[...COACH_MODELS].join("/")}).`
+    : "OpenAI coach disabled: OPENAI_API_KEY is not set.");
   console.log(assemblyAiApiKey
-    ? `Streaming diarization: AssemblyAI ${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"} (speaker_labels enabled).`
-    : "Streaming diarization disabled: set ASSEMBLYAI_API_KEY.");
+    ? `AssemblyAI transcription enabled (${process.env.ASSEMBLYAI_MODEL || "u3-rt-pro"}): one-mic diarization + Online call dual-stream.`
+    : "AssemblyAI transcription disabled: set ASSEMBLYAI_API_KEY.");
 });
 

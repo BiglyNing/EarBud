@@ -18,29 +18,21 @@ The behavior is:
 
 Browser support varies. Typed transcript input remains available as a fallback for testing.
 
-## Automatic Speaker Mode
+## Online Call Mode
 
-Automatic call mode is designed for online calls.
-
-It separates speakers by audio source:
+Online call mode is designed for online calls and separates speakers by audio source:
 
 - Microphone audio is labeled `Me`.
 - Shared tab/window/system audio is labeled `Them`.
 
-The browser records short local audio chunks from each source and sends them to:
-
-```text
-POST /api/transcribe
-```
-
-The local backend sends each chunk to Gemini for transcription, then returns text with the known source label. This lets EarBud build a transcript such as:
+Each source is streamed to AssemblyAI on its **own** WebSocket connection, using the same low-latency streaming pipeline as one-mic mode but with diarization disabled (`/api/diarize-stream?diarize=0`). Because each connection carries a single known speaker, no speaker labeling is needed — the client tags every turn from a socket with that socket's fixed label:
 
 ```text
 Me: I wanted to ask about the deadline.
 Them: I do not think we can move it.
 ```
 
-This is source separation, not speaker diarization. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately.
+This is source separation, not speaker diarization. It works best for calls where the user's microphone and the other person's tab/system audio are captured separately. Streaming each source (rather than uploading short audio chunks) keeps words intact and avoids the latency and fragmentation of chunked batch transcription.
 
 ## One-Mic Diarization
 

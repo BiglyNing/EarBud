@@ -99,7 +99,7 @@ Current status:
 - Typed transcript input is available as a fallback.
 - Transcript lines support user-selected speaker labels for `Me` and `Them`.
 - Automatic call mode labels microphone audio as `Me` and shared tab/window/system audio as `Them`.
-- Backend Gemini transcription is available at `/api/transcribe` for source-separated automatic speaker mode.
+- Online call mode streams the mic and shared audio to AssemblyAI on separate non-diarized connections (`/api/diarize-stream?diarize=0`), labeling each by source.
 - One-mic speaker diarization is available through AssemblyAI streaming at `/api/diarize-stream`.
 - AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by a turn-taking guess.
 
@@ -139,7 +139,7 @@ Deliverable:
 Current status:
 
 - Node backend route exists at `/api/coach`.
-- The coach runs on the OpenAI API when `OPENAI_API_KEY` is configured. Audio transcription stays on Gemini; the two providers are independent.
+- The coach runs on the OpenAI API when `OPENAI_API_KEY` is configured. All live transcription runs on AssemblyAI streaming (one-mic diarized, plus Online call mode's two per-source streams).
 - The user picks the coach model per session: `gpt-5-nano` (default, cheapest) or `gpt-5-mini` (sharper). The allowlist lives in `server.js` and the picker is in the setup UI.
 - The coach prompt injects a persuasion/influence/rhetoric tactics library (`coachingPrinciples.js`) so suggestions are shaped by named sources (48 Laws of Power, The Art of War, Never Split the Difference, Influence, and more) and report which one in the `lens` field.
 - The backend requests strict JSON-schema structured output, returning phase, state, chime-in, suggestion, follow-up, and lens fields.
@@ -226,7 +226,7 @@ Current status:
 - Raw audio is never written to disk (in-memory only), and local session data can be deleted from the UI.
 - Server logs are kept clean of conversation content: errors log messages only, and no transcript/goal text is logged.
 - An automated test suite runs with `npm test` (Node's built-in runner, no extra dependencies), covering:
-  - coaching logic in `coachLogic.js` (speaker labels, transcription cleaning, safety guardrail, local fallback coach, model JSON parsing),
+  - coaching logic in `coachLogic.js` (speaker labels, safety guardrail, local fallback coach, model JSON parsing),
   - the tactics library in `coachingPrinciples.js` (tag selection, ranking, data integrity),
   - session/activation logic in `sessionLogic.js` (wake word normalization, codeword detection, speaker normalization).
 - Pure, testable logic was extracted into `coachLogic.js` and `sessionLogic.js` so it can be verified without booting the server or a browser.
