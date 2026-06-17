@@ -3,16 +3,49 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>EarBud Prototype</title>
+    <meta name="theme-color" content="#0a0f0e">
+    <meta name="description" content="EarBud is a real-time conversation coach: live transcription plus an AI strategist that whispers the right move while you talk.">
+    <title>EarBud — Real-time Conversation Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="brandmark">
+          <span class="brandmark-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <rect x="2" y="9" width="3" height="6" rx="1.5"></rect>
+              <rect x="7.5" y="5" width="3" height="14" rx="1.5"></rect>
+              <rect x="13" y="2" width="3" height="20" rx="1.5"></rect>
+              <rect x="18.5" y="6" width="3" height="12" rx="1.5"></rect>
+            </svg>
+          </span>
+          <span class="brandmark-word">EarBud</span>
+          <span class="brandmark-tag">AI coach</span>
+        </div>
+        <h1 class="hero-title">Your real-time conversation coach</h1>
+        <p class="hero-sub">
+          Live transcription plus an AI strategist that whispers the right move — mid-conversation, in your ear.
+        </p>
+        <ol class="hero-steps">
+          <li><span class="step-num">1</span> Say your objective out loud</li>
+          <li><span class="step-num">2</span> Talk naturally</li>
+          <li><span class="step-num">3</span> Get strategic cues, live</li>
+        </ol>
+      </div>
+    </header>
+
     <main class="app-shell">
       <section class="panel session-panel" aria-labelledby="session-title">
-        <div class="brand-row">
+        <div class="panel-header">
           <div>
-            <p class="eyebrow">Local Prototype</p>
-            <h1 id="session-title">Conversation Objective Coach</h1>
+            <p class="eyebrow">Session</p>
+            <h2 id="session-title">Set up your session</h2>
           </div>
           <div class="device-pill" id="deviceState">Mic standby</div>
         </div>
@@ -26,34 +59,38 @@
             <span class="meta-label">Objective</span>
             <strong>Start the session, then say your objective out loud — your first words set the goal.</strong>
           </div>
-          <label>
-            Tone
-            <select id="toneInput">
-              <option value="calm">Calm</option>
-              <option value="direct">Direct</option>
-              <option value="warm">Warm</option>
-              <option value="confident">Confident</option>
-            </select>
-          </label>
-          <label>
-            Codeword
-            <input id="wakeWordInput" type="text" value="bud" autocomplete="off">
-          </label>
-          <label>
-            Coach model
-            <select id="coachModelInput">
-              <option value="gpt-5-mini" selected>GPT-5 mini (sharper, costs more)</option>
-              <option value="gpt-5-nano">GPT-5 nano (cheapest, fast)</option>
-            </select>
-          </label>
-          <label>
-            Coach speed
-            <select id="coachSpeedInput">
-              <option value="minimal">Fast (least thinking)</option>
-              <option value="low">Balanced</option>
-              <option value="medium">Deep (slower, sharper)</option>
-            </select>
-          </label>
+          <div class="field-row">
+            <label>
+              Tone
+              <select id="toneInput">
+                <option value="calm">Calm</option>
+                <option value="direct">Direct</option>
+                <option value="warm">Warm</option>
+                <option value="confident">Confident</option>
+              </select>
+            </label>
+            <label>
+              Codeword
+              <input id="wakeWordInput" type="text" value="bud" autocomplete="off">
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
+              Coach model
+              <select id="coachModelInput">
+                <option value="gpt-5-mini" selected>GPT-5 mini (sharper, costs more)</option>
+                <option value="gpt-5-nano">GPT-5 nano (cheapest, fast)</option>
+              </select>
+            </label>
+            <label>
+              Coach speed
+              <select id="coachSpeedInput">
+                <option value="minimal">Fast (least thinking)</option>
+                <option value="low">Balanced</option>
+                <option value="medium">Deep (slower, sharper)</option>
+              </select>
+            </label>
+          </div>
           <label>
             Speaker detection
             <select id="speakerModeInput">
@@ -116,24 +153,27 @@
           <button id="deleteButton" class="control-button danger" type="button" disabled>Delete</button>
         </div>
 
-        <label class="manual-entry">
-          Transcript input
-          <textarea id="manualTranscript" rows="3" placeholder="Type a line. Use the codeword to toggle active coaching on or off."></textarea>
-        </label>
-        <label>
-          Transcript speaker
-          <select id="manualSpeakerInput">
-            <option value="me">Me</option>
-            <option value="them">Them</option>
-          </select>
-        </label>
-        <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
+        <div class="manual-block">
+          <span class="meta-label">Manual input</span>
+          <label class="manual-entry">
+            Transcript input
+            <textarea id="manualTranscript" rows="3" placeholder="Type a line. Use the codeword to toggle active coaching on or off."></textarea>
+          </label>
+          <label>
+            Transcript speaker
+            <select id="manualSpeakerInput">
+              <option value="me">Me</option>
+              <option value="them">Them</option>
+            </select>
+          </label>
+          <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
+        </div>
       </section>
 
       <section class="panel voice-panel" aria-labelledby="voice-title">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Local Audio</p>
+            <p class="eyebrow">Audio out</p>
             <h2 id="voice-title">Spoken Suggestions</h2>
           </div>
           <div class="status-dot" id="voiceStatus">Off</div>
@@ -209,6 +249,11 @@
         </ul>
       </section>
     </main>
+
+    <footer class="site-foot">
+      <span class="foot-brand">EarBud · real-time conversation coach</span>
+      <span class="foot-note">Audio is transcribed live and never saved to disk.</span>
+    </footer>
 
     <script src="app.js" type="module"></script>
   </body>
