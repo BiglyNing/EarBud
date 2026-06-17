@@ -139,12 +139,13 @@ Deliverable:
 Current status:
 
 - Node backend route exists at `/api/coach`.
-- The backend uses the Gemini API when `GEMINI_API_KEY` is configured.
-- The backend prompt uses the new strategic coach behavior.
+- The coach runs on the OpenAI API when `OPENAI_API_KEY` is configured. Audio transcription stays on Gemini; the two providers are independent.
+- The user picks the coach model per session: `gpt-5-nano` (default, cheapest) or `gpt-5-mini` (sharper). The allowlist lives in `server.js` and the picker is in the setup UI.
+- The coach prompt injects a persuasion/influence/rhetoric tactics library (`coachingPrinciples.js`) so suggestions are shaped by named sources (48 Laws of Power, The Art of War, Never Split the Difference, Influence, and more) and report which one in the `lens` field.
+- The backend requests strict JSON-schema structured output, returning phase, state, chime-in, suggestion, follow-up, and lens fields.
 - The frontend sends transcript context while active coaching is on.
 - The frontend sends speaker-labeled transcript context so the coach can distinguish the user from the other speaker.
-- The backend returns structured phase, state, chime-in, suggestion, and follow-up fields.
-- A basic local safety screen redirects obvious coercive or deceptive requests.
+- A local fallback coach (`coachLogic.js`) answers when the backend is unavailable, and a backstop safety screen redirects obvious coercive or deceptive requests.
 
 ## Phase 5: Conversation Coaching MVP
 
@@ -217,6 +218,13 @@ Steps:
 Deliverable:
 
 - A local prototype with clear listening controls, ethical coaching boundaries, and reliable session behavior.
+
+Current status:
+
+- Raw audio is not stored by default, and local session data can be deleted from the UI.
+- An automated test suite runs with `npm test` (Node's built-in runner, no extra dependencies). It covers the pure coaching logic in `coachLogic.js` (speaker labels, transcription cleaning, safety guardrail, local fallback coach, model JSON parsing) and the tactics library in `coachingPrinciples.js` (tag selection, ranking, data integrity).
+- Pure, testable logic was extracted into `coachLogic.js` so it can be verified without booting the server.
+- Still to do: consent/recording disclosure flow, transcript review before saving, log redaction, activation-toggle tests, and structured real-world testing across environments.
 
 ## Full Local MVP Milestone
 
