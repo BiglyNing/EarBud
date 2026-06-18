@@ -98,7 +98,6 @@ Current status:
 - Browser speech recognition is available as the lowest-friction transcription path.
 - Typed transcript input is available as a fallback.
 - Transcript lines support user-selected speaker labels for `Me` and `Them`.
-- Automatic call mode labels microphone audio as `Me` and shared tab/window/system audio as `Them`.
 - Online call mode streams the mic and shared audio to AssemblyAI on separate non-diarized connections (`/api/diarize-stream?diarize=0`), labeling each by source.
 - One-mic speaker diarization is available through AssemblyAI streaming at `/api/diarize-stream`.
 - AssemblyAI returns speaker labels mapped to `Me` (first speaker) and `Them`, with short turns resolved by a turn-taking guess.
@@ -232,7 +231,7 @@ Current status:
 - Pure, testable logic was extracted into `coachLogic.js` and `sessionLogic.js` so it can be verified without booting the server or a browser.
 - Remaining before this phase is fully closed: structured real-world testing across quiet/noisy/indoor/outdoor environments. Nothing is persisted server-side, so "transcript review before saving" is not applicable in the local prototype.
 
-What is left after the local prototype: deploy to a real server and build a production frontend (the two items intentionally out of scope here).
+The prototype now also deploys to Render as a single web service (see [render.yaml](../render.yaml) and the README's "Deploy on Render" section). What is left after that: harden the deployment for real multi-user use (authentication and production consent flows) and build a dedicated production frontend (intentionally out of scope for the prototype).
 
 ## Full Local MVP Milestone
 

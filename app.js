@@ -282,7 +282,7 @@ function startSession(event) {
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
   state.lastConfidentSpeaker = null;
-  state.lastSuggestion = `Say your objective out loud — your first words set the goal. Then say "${state.wakeWord}" to turn active coaching on.`;
+  state.lastSuggestion = `Say your objective out loud — your first words set the goal (at least 20 words helps one-mic speaker detection lock onto your voice). Then say "${state.wakeWord}" to turn active coaching on.`;
 
   if (state.speakerMode === "source") {
     startSourceSeparatedTranscription();
@@ -301,9 +301,11 @@ function renderObjectiveDisplay() {
   if (state.goal) {
     value.textContent = state.goal;
   } else if (state.awaitingObjective) {
-    value.textContent = "Listening for your objective — say it out loud now.";
+    value.textContent = state.speakerMode === "diarize"
+      ? "Listening for your objective — say it out loud now. Aim for at least 20 words so one-mic speaker detection can calibrate to your voice."
+      : "Listening for your objective — say it out loud now. Aim for at least 20 words to give the coach clear context.";
   } else {
-    value.textContent = "Start the session, then say your objective out loud — your first words set the goal.";
+    value.textContent = "Start the session, then say your objective out loud — your first words set the goal. Aim for at least 20 words; in one-mic mode a longer first turn helps speaker detection calibrate to your voice.";
   }
 }
 

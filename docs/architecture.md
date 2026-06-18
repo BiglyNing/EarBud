@@ -28,7 +28,7 @@ The app should run at `localhost` during development.
 
 ### Audio Capture
 
-Audio is captured from the computer microphone through the browser. In one-mic diarization mode, a single microphone stream is sent (as raw PCM16) to AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices `Them`. Short turns AssemblyAI cannot attribute are resolved by a turn-taking guess. In automatic call mode, EarBud instead captures shared tab/window/system audio so the mic can be labeled `Me` and the shared audio `Them`.
+Audio is captured from the computer microphone through the browser. In one-mic diarization mode, a single microphone stream is sent (as raw PCM16) to AssemblyAI streaming diarization for live words, timing, and the speaker split; the first speaker is `Me` and other voices `Them`. Short turns AssemblyAI cannot attribute are resolved by a turn-taking guess. In Online call mode, EarBud instead captures shared tab/window/system audio so the mic can be labeled `Me` and the shared audio `Them`.
 
 The prototype should support clear user-controlled states:
 
@@ -114,6 +114,10 @@ The default should be short and non-disruptive.
 - Coach backend: OpenAI API when `OPENAI_API_KEY` is configured (`gpt-5-mini` / `gpt-5-nano`, selectable per session), shaped by the tactics library in `coachingPrinciples.js`. A deterministic local fallback in `coachLogic.js` answers when the backend is unavailable.
 - Transcription backend: AssemblyAI streaming (`/api/diarize-stream`). One-mic mode enables speaker labels; Online call mode opens one socket per source with `diarize=0` (no speaker labels) since each stream is a single known speaker.
 - Storage: in-memory browser state for the active session; raw audio is never written to disk.
+
+## Deployment
+
+The architecture stays local-first by design, but the same Node server also deploys unchanged to a single Render web service (it serves both the API/WebSocket routes and the static frontend). `server.js` reads `process.env.PORT`, so it runs on `localhost:3000` locally and on Render's assigned port in the cloud; see [render.yaml](../render.yaml) and the README's "Deploy on Render" section. A public deployment is a single-user demo only — it has no authentication, so multi-user use would require auth and production consent flows first.
 
 ## Engineering Priorities
 
