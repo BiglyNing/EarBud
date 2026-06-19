@@ -2,6 +2,17 @@
 
 All notable changes to EarBud are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Redesigned the web UI into a single-screen "Field Guide" theme built around Bud, the owl mascot.
+
+### Removed
+
+- The in-app consent gate / pre-session acknowledgment checkbox. Obtaining consent is now left to the user (see `docs/privacy-and-safety.md`).
+- The "conversation partner" setup field (the coach now refers to the other party generically).
+
 ## 0.2.0 — 2026-06-17
 
 The conversation-coaching prototype, feature-complete and deployable.

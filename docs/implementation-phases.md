@@ -220,7 +220,7 @@ Deliverable:
 
 Current status:
 
-- A consent gate blocks starting a session until the user confirms they have the right/consent to record, with a privacy disclosure explaining that audio is never saved to disk and transcript text is sent only to the configured AI providers.
+- Audio is never saved to disk and transcript text is sent only to the configured AI providers. (An earlier build gated each session behind a consent checkbox; that in-app consent gate has since been removed, so obtaining consent is currently left to the user.)
 - Active listening/coaching state is shown in the UI (device pill, phase chip, session status), and pause/end/delete give fast control over the session.
 - Raw audio is never written to disk (in-memory only), and local session data can be deleted from the UI.
 - Server logs are kept clean of conversation content: errors log messages only, and no transcript/goal text is logged.

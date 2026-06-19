@@ -26,6 +26,8 @@ Recommended local modes:
 
 Audio recording and transcription laws vary by location. EarBud should be designed with consent awareness from the beginning.
 
+> Current prototype status: there is no in-app consent gate. An earlier build required a pre-session consent checkbox; it has since been removed, so obtaining consent is currently left to the user. The features below remain design goals, not implemented guarantees.
+
 Possible consent features:
 
 - Clear in-app disclosure before starting a session.

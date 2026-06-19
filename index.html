@@ -3,257 +3,297 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0a0f0e">
+    <meta name="theme-color" content="#F5EFE3">
     <meta name="description" content="EarBud is a real-time conversation coach: live transcription plus an AI strategist that whispers the right move while you talk.">
     <title>EarBud — Real-time Conversation Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@500;600&display=swap">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div class="bg-glow" aria-hidden="true"></div>
+    <div class="paper-grain" aria-hidden="true"></div>
 
-    <header class="hero">
-      <div class="hero-inner">
+    <div class="stage">
+      <header class="topbar">
         <div class="brandmark">
           <span class="brandmark-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <rect x="2" y="9" width="3" height="6" rx="1.5"></rect>
-              <rect x="7.5" y="5" width="3" height="14" rx="1.5"></rect>
-              <rect x="13" y="2" width="3" height="20" rx="1.5"></rect>
-              <rect x="18.5" y="6" width="3" height="12" rx="1.5"></rect>
+            <svg viewBox="0 0 32 32" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4">
+              <circle cx="11" cy="15" r="7"></circle>
+              <circle cx="23" cy="15" r="7"></circle>
+              <path d="M15.5 12.5 Q17 11.4 18.5 12.5" stroke-linecap="round"></path>
             </svg>
           </span>
           <span class="brandmark-word">EarBud</span>
-          <span class="brandmark-tag">AI coach</span>
+          <span class="brandmark-tag">conversation coach</span>
         </div>
-        <h1 class="hero-title">Your real-time conversation coach</h1>
-        <p class="hero-sub">
-          Live transcription plus an AI strategist that whispers the right move — mid-conversation, in your ear.
-        </p>
-        <ol class="hero-steps">
-          <li><span class="step-num">1</span> Say your objective out loud</li>
-          <li><span class="step-num">2</span> Talk naturally</li>
-          <li><span class="step-num">3</span> Get strategic cues, live</li>
-        </ol>
-      </div>
-    </header>
-
-    <main class="app-shell">
-      <section class="panel session-panel" aria-labelledby="session-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Session</p>
-            <h2 id="session-title">Set up your session</h2>
-          </div>
+        <p class="topbar-tagline">Meet Bud. He's done the reading so you don't have to.</p>
+        <div class="topbar-status">
           <div class="device-pill" id="deviceState">Mic standby</div>
-        </div>
-
-        <form class="goal-form" id="goalForm">
-          <label>
-            Conversation partner
-            <input id="partnerInput" type="text" placeholder="Jordan" autocomplete="off">
-          </label>
-          <div class="objective-display" id="objectiveDisplay">
-            <span class="meta-label">Objective</span>
-            <strong>Start the session, then say your objective out loud — your first words set the goal. Aim for at least 20 words; in one-mic mode a longer first turn helps speaker detection calibrate to your voice.</strong>
-          </div>
-          <div class="field-row">
-            <label>
-              Tone
-              <select id="toneInput">
-                <option value="calm">Calm</option>
-                <option value="direct">Direct</option>
-                <option value="warm">Warm</option>
-                <option value="confident">Confident</option>
-              </select>
-            </label>
-            <label>
-              Codeword
-              <input id="wakeWordInput" type="text" value="bud" autocomplete="off">
-            </label>
-          </div>
-          <div class="field-row">
-            <label>
-              Coach model
-              <select id="coachModelInput">
-                <option value="gpt-5-mini" selected>GPT-5 mini (sharper, costs more)</option>
-                <option value="gpt-5-nano">GPT-5 nano (cheapest, fast)</option>
-              </select>
-            </label>
-            <label>
-              Coach speed
-              <select id="coachSpeedInput">
-                <option value="minimal">Fast (least thinking)</option>
-                <option value="low">Balanced</option>
-                <option value="medium">Deep (slower, sharper)</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            Speaker detection
-            <select id="speakerModeInput">
-              <option value="diarize">One mic, in person: auto-detect who is talking</option>
-              <option value="source">Online call: mic = Me, shared audio = Them</option>
-              <option value="manual">Manual labels / browser transcription</option>
-            </select>
-          </label>
-          <p class="helper-text" id="speakerModeStatus">One-mic mode auto-detects speakers. Speak first to set your voice as Me.</p>
-          <p class="helper-text" id="backendStatus">Checking backend...</p>
-          <div class="consent-box">
-            <p class="helper-text">
-              Privacy: audio is transcribed in real time and never saved to disk. Transcript text is sent to the
-              configured AI providers only to generate coaching, and lives in this browser tab until you end or delete the session.
-            </p>
-            <label class="toggle-row">
-              <input id="consentInput" type="checkbox">
-              I confirm I have the right or consent to record and coach this conversation, and I follow local recording laws.
-            </label>
-            <p class="helper-text" id="consentStatus"></p>
-          </div>
-          <button class="primary-action" type="submit">Start Session</button>
-        </form>
-      </section>
-
-      <section class="panel coach-panel" aria-labelledby="coach-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Coach</p>
-            <h2 id="coach-title">Strategic Move</h2>
-          </div>
-          <div class="phase-chip" id="phaseChip">Setup</div>
-        </div>
-
-        <div class="suggestion-box" id="suggestionBox">
-          Set a goal to begin.
-        </div>
-
-        <div class="coach-meta">
-          <div>
-            <span class="meta-label">State</span>
-            <strong id="conversationState">Setup</strong>
-          </div>
-          <div>
-            <span class="meta-label">Lens</span>
-            <strong id="coachLens">—</strong>
-          </div>
-          <div>
-            <span class="meta-label">Last action</span>
-            <strong id="lastAction">None</strong>
-          </div>
-        </div>
-
-        <div class="control-grid">
-          <button id="pauseButton" class="control-button" type="button" disabled>Pause</button>
-          <button id="acceptButton" class="control-button" type="button" disabled>Accept</button>
-          <button id="dismissButton" class="control-button" type="button" disabled>Dismiss</button>
-          <button id="regenerateButton" class="control-button" type="button" disabled>Evaluate</button>
-          <button id="endButton" class="control-button danger" type="button" disabled>End</button>
-          <button id="deleteButton" class="control-button danger" type="button" disabled>Delete</button>
-        </div>
-
-        <div class="manual-block">
-          <span class="meta-label">Manual input</span>
-          <label class="manual-entry">
-            Transcript input
-            <textarea id="manualTranscript" rows="3" placeholder="Type a line. Use the codeword to toggle active coaching on or off."></textarea>
-          </label>
-          <label>
-            Transcript speaker
-            <select id="manualSpeakerInput">
-              <option value="me">Me</option>
-              <option value="them">Them</option>
-            </select>
-          </label>
-          <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
-        </div>
-      </section>
-
-      <section class="panel voice-panel" aria-labelledby="voice-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Audio out</p>
-            <h2 id="voice-title">Spoken Suggestions</h2>
-          </div>
-          <div class="status-dot" id="voiceStatus">Off</div>
-        </div>
-
-        <div class="voice-controls">
-          <label class="toggle-row">
-            <input id="spokenSuggestionsInput" type="checkbox" checked>
-            Spoken suggestions
-          </label>
-          <label>
-            Frequency
-            <select id="speechFrequencyInput">
-              <option value="all" selected>Every suggestion</option>
-              <option value="important">Important only</option>
-            </select>
-          </label>
-          <label>
-            Volume
-            <input id="speechVolumeInput" type="range" min="0" max="1" step="0.1" value="0.7">
-          </label>
-          <label>
-            Speed
-            <input id="speechRateInput" type="range" min="0.75" max="1.25" step="0.05" value="0.95">
-          </label>
-        </div>
-
-        <div class="control-grid voice-actions">
-          <button id="testVoiceButton" class="control-button" type="button">Test</button>
-          <button id="stopVoiceButton" class="control-button danger" type="button" disabled>Stop Voice</button>
-        </div>
-      </section>
-
-      <section class="panel transcript-panel" aria-labelledby="transcript-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Session</p>
-            <h2 id="transcript-title">Transcript</h2>
-          </div>
           <div class="status-dot" id="sessionStatus">Inactive</div>
         </div>
-        <div class="live-transcript-wrap" aria-live="polite">
-          <span class="meta-label">Live Transcription</span>
-          <div class="speaker-tools">
-            <button id="swapSpeakerButton" class="secondary-action" type="button" disabled>Swap Me / Them</button>
-          </div>
-          <label class="inline-select">
-            Live mic speaker
-            <select id="liveSpeakerInput">
-              <option value="me">Me</option>
-              <option value="them">Them</option>
-            </select>
-          </label>
-          <div class="live-transcript" id="liveTranscript">
-            Start a session, allow microphone access, then speak. Live words show here.
-          </div>
-        </div>
-        <ol class="transcript-list" id="transcriptList"></ol>
-      </section>
+      </header>
 
-      <section class="panel summary-panel" aria-labelledby="summary-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Review</p>
-            <h2 id="summary-title">Conversation Review</h2>
-          </div>
-        </div>
-        <div class="review-box" id="reviewBox">
-          End a session to generate a local review.
-        </div>
-        <ul class="followup-list" id="followupList">
-          <li>No follow-ups yet.</li>
-        </ul>
-      </section>
-    </main>
+      <main class="board">
+        <!-- ===== Setup ===== -->
+        <section class="col col-setup" aria-labelledby="setup-eyebrow">
+          <p class="eyebrow" id="setup-eyebrow">Setup</p>
+          <ol class="play-steps">
+            <li><span>1</span> Say your objective out loud</li>
+            <li><span>2</span> Talk naturally — say your codeword for help</li>
+            <li><span>3</span> Get short, strategic cues, live</li>
+          </ol>
+          <form class="goal-form" id="goalForm">
+            <div class="objective-display" id="objectiveDisplay">
+              <span class="meta-label">Objective</span>
+              <strong>Start your session, then say your objective out loud. Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective so aim for at least 20 words.</strong>
+            </div>
+            <div class="field-row">
+              <label>
+                Tone
+                <select id="toneInput">
+                  <option value="calm">Calm</option>
+                  <option value="direct">Direct</option>
+                  <option value="warm">Warm</option>
+                  <option value="confident">Confident</option>
+                </select>
+              </label>
+              <label>
+                Codeword
+                <input id="wakeWordInput" type="text" value="bud" autocomplete="off">
+              </label>
+            </div>
+            <label>
+              Speaker detection
+              <select id="speakerModeInput">
+                <option value="diarize">One mic, in person</option>
+                <option value="source">Online call (mic = Me)</option>
+                <option value="manual">Manual / typed</option>
+              </select>
+            </label>
 
-    <footer class="site-foot">
-      <span class="foot-brand">EarBud · real-time conversation coach</span>
-      <span class="foot-note">Audio is transcribed live and never saved to disk.</span>
-    </footer>
+            <details class="more">
+              <summary>Advanced settings</summary>
+              <div class="more-body">
+                <div class="field-row">
+                  <label>
+                    Coach model
+                    <select id="coachModelInput">
+                      <option value="gpt-5-mini" selected>GPT-5 mini</option>
+                      <option value="gpt-5-nano">GPT-5 nano</option>
+                    </select>
+                  </label>
+                  <label>
+                    Coach speed
+                    <select id="coachSpeedInput">
+                      <option value="minimal">Fast</option>
+                      <option value="low">Balanced</option>
+                      <option value="medium">Deep</option>
+                    </select>
+                  </label>
+                </div>
+                <p class="helper-text" id="speakerModeStatus">One-mic mode auto-detects speakers. Speak first to set your voice as Me.</p>
+                <p class="helper-text" id="backendStatus">Checking backend...</p>
+              </div>
+            </details>
+
+            <button class="primary-action" type="submit">Start Session</button>
+          </form>
+        </section>
+
+        <!-- ===== Bud + Coach (centerpiece) ===== -->
+        <section class="col col-coach" aria-labelledby="coach-eyebrow">
+          <div class="bud-stage">
+            <div class="phase-chip" id="phaseChip">Setup</div>
+            <svg id="bud" class="bud" viewBox="0 0 480 584" fill="none" role="img" aria-label="Bud, the EarBud owl mascot">
+              <defs>
+                <clipPath id="budLens">
+                  <circle cx="203.5" cy="190.5" r="41"></circle>
+                  <circle cx="275.5" cy="190.5" r="41"></circle>
+                </clipPath>
+              </defs>
+
+              <g id="bud_Frame">
+                <g id="bud-body">
+                  <g id="Group 3">
+                    <g id="Feet">
+                      <line x1="207.819" y1="486.439" x2="194.439" y2="508.181" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="2.5" y1="-2.5" x2="28.0287" y2="-2.5" transform="matrix(0.524097 0.851658 0.851658 -0.524097 212 483)" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="209.5" y1="485.5" x2="209.5" y2="515.5" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="268.819" y1="486.439" x2="255.439" y2="508.181" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="2.5" y1="-2.5" x2="28.0287" y2="-2.5" transform="matrix(0.524097 0.851658 0.851658 -0.524097 273 483)" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="270.5" y1="485.5" x2="270.5" y2="515.5" stroke="#BA9E61" stroke-width="5" stroke-linecap="round"/>
+                    </g>
+                    <g id="Group 1">
+                      <path d="M292.5 59.6164C304.9 65.2164 306.333 96.2831 305.5 111.116L265 105.616C269 87.9498 280.1 54.0164 292.5 59.6164Z" fill="#BA6F6F" stroke="#1E1E1E" stroke-width="5"/>
+                      <path d="M188.193 59.6164C175.793 65.2164 174.36 96.2831 175.193 111.116L215.693 105.616C211.693 87.9498 200.593 54.0164 188.193 59.6164Z" fill="#BA6F6F" stroke="#1E1E1E" stroke-width="5"/>
+                    </g>
+                    <path d="M239.303 93C281.961 93.0002 319.698 115.11 346.85 151.168C374.012 187.24 390.5 237.196 390.5 292.5C390.5 347.481 363.743 397.993 331.227 434.731C314.982 453.085 297.363 467.927 281.06 478.111C264.669 488.35 249.918 493.689 239.347 493.5C228.719 493.31 214.36 487.986 198.639 477.995C182.986 468.048 166.232 453.632 150.854 435.636C120.084 399.629 95 349.51 95 292.5C95 211.524 121.407 142.512 174.466 111.162C194.22 99.4905 216.18 93 239.303 93Z" fill="#A46650" stroke="black" stroke-width="5"/>
+                    <path d="M239.5 294.5C279.06 294.5 311.5 332.821 311.5 377.5C311.5 399.81 303.383 423.632 290.255 441.856C277.113 460.1 259.136 472.5 239.5 472.5C219.864 472.5 201.887 460.1 188.745 441.856C175.617 423.632 167.5 399.81 167.5 377.5C167.5 332.821 199.94 294.5 239.5 294.5Z" fill="#F4C0C0" stroke="black" stroke-width="3"/>
+                    <path d="M205 353L219.5 372L235 353" stroke="#787474" stroke-width="4"/>
+                    <path d="M280 378L265.5 400.5L250 378" stroke="#787474" stroke-width="4"/>
+                    <path d="M201 407L215.5 429.5L231 407" stroke="#787474" stroke-width="4"/>
+                    <path d="M339 191.864C339 231.553 294.452 283 239.5 283C184.548 283 140 231.553 140 191.864C140 152.174 184.548 120 239.5 120C294.452 120 339 152.174 339 191.864Z" fill="#D2927C"/>
+                    <path id="bud-beak" d="M239.18 270L228 243H250L239.18 270Z" fill="#E59D6A" stroke="black" stroke-width="5" stroke-linejoin="round"/>
+                    <g id="Group 2">
+                      <path d="M237 275.5L214.5 285.459V265.541L237 275.5Z" fill="#407732" stroke="black" stroke-width="3"/>
+                      <path d="M242 275.5L264.5 285.459V265.541L242 275.5Z" fill="#407732" stroke="black" stroke-width="3"/>
+                    </g>
+                  </g>
+                  <g id="Eyes">
+                    <ellipse cx="204.091" cy="190.5" rx="43.0909" ry="41.5" fill="#F5E7E7"/>
+                    <ellipse cx="279.091" cy="190.5" rx="43.0909" ry="41.5" fill="#F5E7E7"/>
+                    <ellipse cx="205.527" cy="194.65" rx="16.7576" ry="16.1389" fill="black"/>
+                    <ellipse cx="274.473" cy="194.65" rx="16.7576" ry="16.1389" fill="black"/>
+                    <ellipse cx="198.345" cy="189.578" rx="5.74545" ry="5.53333" fill="white"/>
+                    <ellipse cx="267.291" cy="189.578" rx="5.74545" ry="5.53333" fill="white"/>
+                  </g>
+                  <g id="bud-eyelids" aria-hidden="true">
+                    <ellipse class="bud-lid" cx="204.091" cy="190.5" rx="43.0909" ry="41.5"/>
+                    <ellipse class="bud-lid" cx="279.091" cy="190.5" rx="43.0909" ry="41.5"/>
+                  </g>
+                  <g id="Glasses">
+                    <circle cx="203.5" cy="190.5" r="46.5" stroke="black" stroke-width="12"/>
+                    <circle cx="275.5" cy="190.5" r="46.5" stroke="black" stroke-width="12"/>
+                    <path d="M322 170C339.345 157.322 357.894 164.718 365 170" stroke="black" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M118 170C135.345 157.322 153.894 164.718 161 170" stroke="black" stroke-width="10" stroke-linecap="round"/>
+                  </g>
+                </g>
+                <g id="bud-wing-l">
+                  <path d="M103.434 283C83.4863 300.062 55.5593 347.35 103.434 400C129.814 352.75 114.426 302.312 103.434 283Z" fill="#A46650" stroke="black" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M93 313C98.1667 317.167 109.1 328.8 111.5 342" stroke="#592D2D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M89 342C94.1667 346.167 105.1 357.8 107.5 371" stroke="#592D2D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+                <g id="bud-wing-r">
+                  <path d="M382.566 283C402.514 300.062 430.441 347.35 382.566 400C356.186 352.75 371.574 302.312 382.566 283Z" fill="#A46650" stroke="black" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M393 313C387.833 317.167 376.9 328.8 374.5 342" stroke="#592D2D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M397 342C391.833 346.167 380.9 357.8 378.5 371" stroke="#592D2D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+              </g>
+
+              <g id="bud-glint" aria-hidden="true">
+                <g clip-path="url(#budLens)">
+                  <rect class="bud-shine" x="140" y="120" width="22" height="150" rx="11"></rect>
+                </g>
+                <path class="bud-spark" d="M240,44 l5,16 l16,5 l-16,5 l-5,16 l-5,-16 l-16,-5 l16,-5 Z"></path>
+              </g>
+            </svg>
+          </div>
+
+          <p class="eyebrow centered" id="coach-eyebrow">Bud says</p>
+          <div class="suggestion-box" id="suggestionBox">
+            Set a goal to begin.
+          </div>
+
+          <div class="control-grid">
+            <button id="pauseButton" class="control-button" type="button" disabled>Pause</button>
+            <button id="acceptButton" class="control-button" type="button" disabled>Accept</button>
+            <button id="dismissButton" class="control-button" type="button" disabled>Dismiss</button>
+            <button id="regenerateButton" class="control-button" type="button" disabled>Evaluate</button>
+            <button id="endButton" class="control-button danger" type="button" disabled>End</button>
+            <button id="deleteButton" class="control-button danger" type="button" disabled>Delete</button>
+          </div>
+
+          <div class="coach-meta">
+            <div>
+              <span class="meta-label">State</span>
+              <strong id="conversationState">Setup</strong>
+            </div>
+            <div>
+              <span class="meta-label">Lens</span>
+              <strong id="coachLens">—</strong>
+            </div>
+            <div>
+              <span class="meta-label">Last action</span>
+              <strong id="lastAction">None</strong>
+            </div>
+          </div>
+
+          <details class="more">
+            <summary>Manual input</summary>
+            <div class="more-body manual-block">
+              <label class="manual-entry">
+                Transcript input
+                <textarea id="manualTranscript" rows="2" placeholder="Type a line. Use the codeword to toggle coaching."></textarea>
+              </label>
+              <label>
+                Transcript speaker
+                <select id="manualSpeakerInput">
+                  <option value="me">Me</option>
+                  <option value="them">Them</option>
+                </select>
+              </label>
+              <button id="addLineButton" class="secondary-action" type="button" disabled>Add Transcript Line</button>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===== Transcript ===== -->
+        <section class="col col-transcript" aria-labelledby="transcript-eyebrow">
+          <p class="eyebrow" id="transcript-eyebrow">Transcript</p>
+          <div class="live-transcript-wrap" aria-live="polite">
+            <div class="speaker-tools">
+              <label class="inline-select">
+                Live mic speaker
+                <select id="liveSpeakerInput">
+                  <option value="me">Me</option>
+                  <option value="them">Them</option>
+                </select>
+              </label>
+              <button id="swapSpeakerButton" class="secondary-action" type="button" disabled>Swap Me / Them</button>
+            </div>
+            <div class="live-transcript" id="liveTranscript">
+              Start a session, allow mic access, then speak. Live words show here.
+            </div>
+          </div>
+          <ol class="transcript-list" id="transcriptList"></ol>
+
+          <details class="more">
+            <summary>Spoken suggestions <span class="status-dot inline-dot" id="voiceStatus">Off</span></summary>
+            <div class="more-body voice-controls">
+              <label class="toggle-row">
+                <input id="spokenSuggestionsInput" type="checkbox" checked>
+                Spoken suggestions
+              </label>
+              <label>
+                Frequency
+                <select id="speechFrequencyInput">
+                  <option value="all" selected>Every suggestion</option>
+                  <option value="important">Important only</option>
+                </select>
+              </label>
+              <label>
+                Volume
+                <input id="speechVolumeInput" type="range" min="0" max="1" step="0.1" value="0.7">
+              </label>
+              <label>
+                Speed
+                <input id="speechRateInput" type="range" min="0.75" max="1.25" step="0.05" value="0.95">
+              </label>
+              <div class="control-grid voice-actions">
+                <button id="testVoiceButton" class="control-button" type="button">Test</button>
+                <button id="stopVoiceButton" class="control-button danger" type="button" disabled>Stop Voice</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="more">
+            <summary>Conversation review</summary>
+            <div class="more-body">
+              <div class="review-box" id="reviewBox">End a session to generate a local review.</div>
+              <ul class="followup-list" id="followupList">
+                <li>No follow-ups yet.</li>
+              </ul>
+            </div>
+          </details>
+        </section>
+      </main>
+
+      <footer class="footbar">
+        <span>EarBud · real-time conversation coach</span>
+        <span>Audio is transcribed live and never saved to disk.</span>
+      </footer>
+    </div>
 
     <script src="app.js" type="module"></script>
   </body>

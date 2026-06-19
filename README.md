@@ -4,7 +4,7 @@
 
 Before a conversation, tell EarBud who you're talking to, what you're trying to accomplish, and any context that might help. As the conversation unfolds, EarBud listens to both sides and provides subtle, actionable suggestions to help move the discussion toward your goal.
 
-Whether you're negotiating a raise, handling a difficult conversation, networking, or pitching an idea, EarBud acts like a live coach in your ear.
+Whether your talking with your boss, negotiating a raise, or just socializing with new people, EarBud acts as a live coach who speaks in your ears.
 
 ## How It Works
 
@@ -157,9 +157,8 @@ The prototype:
 
 * Keeps audio in memory only
 * Avoids storing conversation transcripts in server logs
-* Requires a consent acknowledgment before each session
 * Allows session data to be deleted from the interface
 
-If used in real-world situations, it's important to comply with local recording laws, obtain appropriate consent from participants, and provide clear indicators when audio is being processed.
+The prototype does **not** enforce an in-app consent gate, so obtaining consent is your responsibility. If used in real-world situations, comply with local recording laws, obtain appropriate consent from participants, and provide clear indicators when audio is being processed.
 
 For more details, see **Privacy and Safety** in `docs/privacy-and-safety.md`.

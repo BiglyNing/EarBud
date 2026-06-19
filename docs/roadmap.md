@@ -52,7 +52,7 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 
 ## Phase 7: Trust And Safety
 
-- Add clear consent flows. Status: complete (consent gate + privacy disclosure before a session can start).
+- Add clear consent flows. Status: reverted — an in-app consent gate was added, then removed from the prototype UI; obtaining consent is currently left to the user (see `docs/privacy-and-safety.md`).
 - Add visible listening and active coaching indicators. Status: complete.
 - Add data deletion controls. Status: complete.
 - Keep conversation content out of server logs. Status: complete.

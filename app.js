@@ -72,14 +72,11 @@ const state = {
 
 const elements = {
   goalForm: document.querySelector("#goalForm"),
-  partnerInput: document.querySelector("#partnerInput"),
   objectiveDisplay: document.querySelector("#objectiveDisplay"),
   toneInput: document.querySelector("#toneInput"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
   coachModelInput: document.querySelector("#coachModelInput"),
   coachSpeedInput: document.querySelector("#coachSpeedInput"),
-  consentInput: document.querySelector("#consentInput"),
-  consentStatus: document.querySelector("#consentStatus"),
   speakerModeInput: document.querySelector("#speakerModeInput"),
   speakerModeStatus: document.querySelector("#speakerModeStatus"),
   backendStatus: document.querySelector("#backendStatus"),
@@ -111,8 +108,24 @@ const elements = {
   speechVolumeInput: document.querySelector("#speechVolumeInput"),
   speechRateInput: document.querySelector("#speechRateInput"),
   testVoiceButton: document.querySelector("#testVoiceButton"),
-  stopVoiceButton: document.querySelector("#stopVoiceButton")
+  stopVoiceButton: document.querySelector("#stopVoiceButton"),
+  bud: document.querySelector("#bud")
 };
+
+let lastCuedSuggestion = "";
+
+// Play Bud's "lens glint" once when a fresh suggestion appears. Purely cosmetic
+// and fully guarded, so it never affects coaching if the mascot isn't present.
+function triggerBudCue(suggestion) {
+  const bud = elements.bud;
+  if (!bud) return;
+  if (suggestion && suggestion !== lastCuedSuggestion) {
+    bud.classList.remove("bud--cue");
+    void bud.getBoundingClientRect(); // force reflow so the animation restarts
+    bud.classList.add("bud--cue");
+  }
+  lastCuedSuggestion = suggestion || "";
+}
 
 function render() {
   elements.deviceState.textContent = state.listening
@@ -131,6 +144,10 @@ function render() {
       ? "Coaching On"
       : state.phase;
   elements.suggestionBox.textContent = state.lastSuggestion;
+  triggerBudCue(state.lastSuggestion);
+  if (elements.bud) {
+    elements.bud.classList.toggle("bud--speaking", Boolean(state.speechSpeaking));
+  }
   renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
   if (elements.coachLens) {
@@ -168,7 +185,7 @@ function render() {
     meta.className = "line-meta";
     meta.textContent = `Line ${index + 1} - ${line.time} - ${getSpeakerLabel(line.speaker)}${line.codeword ? " - codeword" : ""}`;
     item.append(meta, document.createTextNode(line.text));
-    elements.transcriptList.appendChild(item);
+    elements.transcriptList.prepend(item);
   });
 
   elements.followupList.innerHTML = "";
@@ -238,18 +255,7 @@ function renderVoiceControls() {
 function startSession(event) {
   event.preventDefault();
 
-  if (elements.consentInput && !elements.consentInput.checked) {
-    if (elements.consentStatus) {
-      elements.consentStatus.textContent = "Please confirm consent before starting a session.";
-    }
-    elements.consentInput.focus();
-    return;
-  }
-  if (elements.consentStatus) {
-    elements.consentStatus.textContent = "";
-  }
-
-  state.partner = elements.partnerInput.value.trim() || "this person";
+  state.partner = "this person";
   state.goal = "";
   state.awaitingObjective = true;
   state.tone = elements.toneInput.value;
@@ -305,7 +311,7 @@ function renderObjectiveDisplay() {
       ? "Listening for your objective — say it out loud now. Aim for at least 20 words so one-mic speaker detection can calibrate to your voice."
       : "Listening for your objective — say it out loud now. Aim for at least 20 words to give the coach clear context.";
   } else {
-    value.textContent = "Start the session, then say your objective out loud — your first words set the goal. Aim for at least 20 words; in one-mic mode a longer first turn helps speaker detection calibrate to your voice.";
+    value.textContent = "Start your session, then say your objective out loud. Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective so aim for at least 20 words.";
   }
 }
 
@@ -1257,7 +1263,6 @@ function deleteSessionData() {
   state.liveSpeaker = "me";
   state.manualSpeaker = "me";
   state.speakerMode = "manual";
-  elements.partnerInput.value = "";
   elements.liveSpeakerInput.value = "me";
   elements.manualSpeakerInput.value = "me";
   elements.speakerModeInput.value = "manual";
