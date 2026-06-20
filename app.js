@@ -91,9 +91,6 @@ const elements = {
   coachLens: document.querySelector("#coachLens"),
   lastAction: document.querySelector("#lastAction"),
   pauseButton: document.querySelector("#pauseButton"),
-  acceptButton: document.querySelector("#acceptButton"),
-  dismissButton: document.querySelector("#dismissButton"),
-  regenerateButton: document.querySelector("#regenerateButton"),
   endButton: document.querySelector("#endButton"),
   deleteButton: document.querySelector("#deleteButton"),
   manualTranscript: document.querySelector("#manualTranscript"),
@@ -311,9 +308,6 @@ function render() {
   elements.sessionStatus.classList.toggle("active", state.active && !state.paused && state.coachingActive);
 
   elements.pauseButton.disabled = !state.active;
-  elements.acceptButton.disabled = !state.active || !state.currentSuggestion || state.requestingAgent;
-  elements.dismissButton.disabled = !state.active || !state.currentSuggestion || state.requestingAgent;
-  elements.regenerateButton.disabled = !state.active || !state.coachingActive || state.requestingAgent || state.transcript.length === 0;
   elements.endButton.disabled = !state.active;
   elements.deleteButton.disabled = !state.active && state.transcript.length === 0 && state.followUps.length === 0 && !state.currentSuggestion;
   elements.addLineButton.disabled = !state.active || state.paused;
@@ -466,10 +460,10 @@ function renderObjectiveDisplay() {
     value.textContent = state.goal;
   } else if (state.awaitingObjective) {
     value.textContent = state.speakerMode === "diarize"
-      ? "Listening for your objective. Say it out loud and aim for at least 20 words so one-mic speaker detection can calibrate to your voice."
-      : "Listening for your objective. Say it out loud and aim for at least 20 words to give the coach clear context.";
+      ? "Listening for your objective. Say it out loud and aim for at least 10 words so one-mic speaker detection can calibrate to your voice."
+      : "Listening for your objective. Say it out loud and aim for at least 10 words to give the coach clear context.";
   } else {
-    value.textContent = "Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective, so aim for at least 20 words.";
+    value.textContent = "Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective and aim for at least 10 clear words.";
   }
 }
 
@@ -1308,33 +1302,6 @@ function addFollowUp(text) {
   }
 }
 
-function acceptSuggestion() {
-  if (!state.currentSuggestion) return;
-
-  state.acceptedSuggestions.push({
-    text: state.currentSuggestion,
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    state: state.conversationState
-  });
-  state.lastAction = "Suggestion accepted";
-  addFollowUp(`Use accepted move: ${state.currentSuggestion}`);
-  render();
-}
-
-function dismissSuggestion() {
-  if (!state.currentSuggestion) return;
-
-  state.dismissedSuggestions.push({
-    text: state.currentSuggestion,
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    state: state.conversationState
-  });
-  state.currentSuggestion = "";
-  state.lastSuggestion = "Suggestion dismissed. I will keep listening for a better opening.";
-  state.lastAction = "Suggestion dismissed";
-  render();
-}
-
 function setupRecognition() {
   if (!SpeechRecognition) return;
 
@@ -1434,12 +1401,6 @@ function togglePause() {
     startContinuousListening();
   }
   render();
-}
-
-function regenerateSuggestion() {
-  const latest = state.transcript[state.transcript.length - 1];
-  if (!latest) return;
-  requestAgentSuggestion(latest);
 }
 
 function endSession() {
@@ -1632,9 +1593,6 @@ if (elements.swapSpeakerButton) {
   elements.swapSpeakerButton.addEventListener("click", swapMeThem);
 }
 elements.pauseButton.addEventListener("click", togglePause);
-elements.acceptButton.addEventListener("click", acceptSuggestion);
-elements.dismissButton.addEventListener("click", dismissSuggestion);
-elements.regenerateButton.addEventListener("click", regenerateSuggestion);
 elements.endButton.addEventListener("click", endSession);
 elements.deleteButton.addEventListener("click", deleteSessionData);
 elements.spokenSuggestionsInput.addEventListener("change", toggleSpokenSuggestions);

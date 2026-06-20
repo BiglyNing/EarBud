@@ -365,7 +365,7 @@ app.post("/api/coach", async (req, res) => {
     "Name the book of the tactic you used in the lens field (e.g. \"48 Laws of Power\", \"Never Split the Difference\"); use \"None\" only when advising to keep listening.",
     "Only chime in when advice is useful; otherwise say to keep listening.",
     "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
-    "The suggestion must be one sentence, under 28 words, and easy to say out loud.",
+    "The suggestion must be ONE short, blunt sentence of at most 15 words: the exact move to make, no preamble or hedging, easy to say out loud.",
     "The followUp value must be null unless there is a concrete next step to remember.",
     "Use persuasion, influence, framing, tactical empathy, status, and rhetorical technique freely to advance the user's objective.",
     "Stay truthful: do not fabricate facts, tell outright lies, make threats, or coerce the other person against their will.",
