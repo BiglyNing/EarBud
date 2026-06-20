@@ -36,17 +36,21 @@
 
       <main class="board">
         <!-- ===== Setup ===== -->
-        <section class="col col-setup" aria-labelledby="setup-eyebrow">
-          <p class="eyebrow" id="setup-eyebrow">Setup</p>
+        <section class="col col-setup shelf" aria-labelledby="setup-eyebrow">
+          <div class="shelf-crown"><h2 class="carved" id="setup-eyebrow">Setup</h2></div>
+          <div class="shelf-body">
+            <div class="shelf-level">
           <ol class="play-steps">
             <li><span>1</span> Say your objective out loud</li>
-            <li><span>2</span> Talk naturally — say your codeword for help</li>
-            <li><span>3</span> Get short, strategic cues, live</li>
+            <li><span>2</span> Say your codeword when you want help</li>
+            <li><span>3</span> Get strategic cues live from Bud</li>
           </ol>
+            </div>
+            <div class="shelf-level shelf-level--fill">
           <form class="goal-form" id="goalForm">
             <div class="objective-display" id="objectiveDisplay">
               <span class="meta-label">Objective</span>
-              <strong>Start your session, then say your objective out loud. Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective so aim for at least 20 words.</strong>
+              <strong>Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective, so aim for at least 20 words.</strong>
             </div>
             <div class="field-row">
               <label>
@@ -99,6 +103,9 @@
 
             <button class="primary-action" type="submit">Start Session</button>
           </form>
+            </div>
+            <div class="bookcase" data-library="setup" aria-hidden="true"></div>
+          </div>
         </section>
 
         <!-- ===== Bud + Coach (centerpiece) ===== -->
@@ -158,6 +165,14 @@
                     <path d="M322 170C339.345 157.322 357.894 164.718 365 170" stroke="black" stroke-width="10" stroke-linecap="round"/>
                     <path d="M118 170C135.345 157.322 153.894 164.718 161 170" stroke="black" stroke-width="10" stroke-linecap="round"/>
                   </g>
+                  <g id="bud-lashes" aria-hidden="true">
+                    <path d="M171 223 L160 234"/>
+                    <path d="M160 206 L149 210"/>
+                    <path d="M157 191 L145 190"/>
+                    <path d="M308 223 L319 234"/>
+                    <path d="M319 206 L330 210"/>
+                    <path d="M322 191 L334 190"/>
+                  </g>
                 </g>
                 <g id="bud-wing-l">
                   <path d="M103.434 283C83.4863 300.062 55.5593 347.35 103.434 400C129.814 352.75 114.426 302.312 103.434 283Z" fill="#A46650" stroke="black" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -178,6 +193,8 @@
                 <path class="bud-spark" d="M240,44 l5,16 l16,5 l-16,5 l-5,16 l-5,-16 l-16,-5 l16,-5 Z"></path>
               </g>
             </svg>
+            <div class="bud-books" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="bud-zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
           </div>
 
           <p class="eyebrow centered" id="coach-eyebrow">Bud says</p>
@@ -229,9 +246,12 @@
         </section>
 
         <!-- ===== Transcript ===== -->
-        <section class="col col-transcript" aria-labelledby="transcript-eyebrow">
-          <p class="eyebrow" id="transcript-eyebrow">Transcript</p>
+        <section class="col col-transcript shelf" aria-labelledby="transcript-eyebrow">
+          <div class="shelf-crown"><h2 class="carved" id="transcript-eyebrow">Transcript</h2></div>
+          <div class="shelf-body">
+            <div class="shelf-level">
           <div class="live-transcript-wrap" aria-live="polite">
+            <span class="meta-label">Live Transcript</span>
             <div class="speaker-tools">
               <label class="inline-select">
                 Live mic speaker
@@ -246,8 +266,11 @@
               Start a session, allow mic access, then speak. Live words show here.
             </div>
           </div>
+            </div>
+            <div class="shelf-level grow">
           <ol class="transcript-list" id="transcriptList"></ol>
-
+            </div>
+            <div class="shelf-level">
           <details class="more">
             <summary>Spoken suggestions <span class="status-dot inline-dot" id="voiceStatus">Off</span></summary>
             <div class="more-body voice-controls">
@@ -286,6 +309,9 @@
               </ul>
             </div>
           </details>
+            </div>
+            <div class="bookcase" data-library="transcript" aria-hidden="true"></div>
+          </div>
         </section>
       </main>
 

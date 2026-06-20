@@ -34,7 +34,7 @@ const state = {
   dismissedSuggestions: [],
   review: "End a session to generate a local review.",
   lastAction: "None",
-  lastSuggestion: "Start a session, then say your objective out loud.",
+  lastSuggestion: "Nothing, Bud is asleep. Start a session to wake him up.",
   currentSuggestion: "",
   lastLens: "None",
   awaitingObjective: false,
@@ -127,6 +127,144 @@ function triggerBudCue(suggestion) {
   lastCuedSuggestion = suggestion || "";
 }
 
+// Decorative "lens library" — the books Bud has read, shown as spines on the
+// shelves so the sidebars fill out and hint at where the coaching comes from.
+// These mirror the sources in coachingPrinciples.js (plus a few more). Purely
+// cosmetic: the bookcases are aria-hidden and never affect coaching.
+const LENS_BOOKS = [
+  { full: "The 48 Laws of Power", spine: "48 Laws", color: "#592D2D" },
+  { full: "The Prince", spine: "The Prince", color: "#A8392B" },
+  { full: "The Art of War", spine: "Art of War", color: "#407732" },
+  { full: "The 33 Strategies of War", spine: "33 Strategies", color: "#2f5a25" },
+  { full: "Never Split the Difference", spine: "Never Split", color: "#A46650" },
+  { full: "Getting to Yes", spine: "Getting to Yes", color: "#BA9E61", ink: "dark" },
+  { full: "Influence", spine: "Influence", color: "#8a5341" },
+  { full: "Pre-Suasion", spine: "Pre-Suasion", color: "#BA6F6F" },
+  { full: "Aristotle's Rhetoric", spine: "Rhetoric", color: "#592D2D" },
+  { full: "Thank You for Arguing", spine: "Thank You", color: "#E59D6A", ink: "dark" },
+  { full: "How to Win Friends & Influence People", spine: "Win Friends", color: "#407732" },
+  { full: "The Charisma Myth", spine: "Charisma Myth", color: "#BA6F6F" },
+  { full: "The Laws of Human Nature", spine: "Human Nature", color: "#A46650" },
+  { full: "Impro", spine: "Impro", color: "#A8392B" },
+  { full: "Deep Work", spine: "Deep Work", color: "#2f5a25" },
+  { full: "Crucial Conversations", spine: "Crucial Conversations", color: "#8a5341" },
+  { full: "Difficult Conversations", spine: "Difficult Conversations", color: "#BA9E61", ink: "dark" },
+  { full: "Start with No", spine: "Start with No", color: "#592D2D" },
+  { full: "Pitch Anything", spine: "Pitch Anything", color: "#A46650" },
+  { full: "Made to Stick", spine: "Made to Stick", color: "#E59D6A", ink: "dark" }
+];
+
+// Build the shelves: ONE row per sidebar. Spines flex-grow to fill the row (so
+// it always reads near-full) and stand tall enough to read each title. Each
+// shelf has its own widths/heights/lean/knick-knacks so the two rows look
+// distinct, not mirrored. Purely decorative. Objects with a numeric `at` sit
+// after that book index; `at: "end"` trails the row.
+const SHELF_LAYOUT = {
+  setup: {
+    widths: [30, 23, 35, 27, 33, 22, 31, 26, 36, 24],
+    heights: [100, 88, 96, 82, 99, 90, 85, 97, 91, 100],
+    leans: [2, 7],
+    objects: [{ kind: "plant", at: "end" }, { kind: "pokeball", at: "end" }]
+  },
+  transcript: {
+    widths: [25, 34, 22, 31, 28, 36, 24, 30, 23, 33],
+    heights: [90, 100, 84, 95, 87, 99, 82, 93, 100, 86],
+    leans: [],
+    leansRight: [4],
+    objects: [{ kind: "stack", at: 3 }, { kind: "mug", at: "end" }]
+  }
+};
+
+function makeObject(kind) {
+  const obj = document.createElement("span");
+  obj.className = `object object--${kind}`;
+  if (kind === "stack") {
+    for (let i = 0; i < 3; i += 1) obj.appendChild(document.createElement("i"));
+  }
+  return obj;
+}
+
+// Scale a spine's font so its full title fills the spine. The book is in
+// writing-mode: vertical-rl, so the title runs down the (block) height axis —
+// we grow the font until it would overflow the spine's height or width, then
+// step back. Each spine gets its own size, so long and short titles both fill.
+function fitSpine(spine) {
+  const minPx = 7;
+  const maxPx = 22;
+  let size = minPx;
+  spine.style.fontSize = `${size}px`;
+  while (size < maxPx) {
+    const next = size + 0.5;
+    spine.style.fontSize = `${next}px`;
+    if (spine.scrollHeight > spine.clientHeight || spine.scrollWidth > spine.clientWidth) {
+      spine.style.fontSize = `${size}px`;
+      break;
+    }
+    size = next;
+  }
+}
+
+function renderLibrary() {
+  const containers = document.querySelectorAll("[data-library]");
+  if (!containers.length) return;
+
+  const half = Math.ceil(LENS_BOOKS.length / 2);
+  const sets = { setup: LENS_BOOKS.slice(0, half), transcript: LENS_BOOKS.slice(half) };
+
+  containers.forEach((container) => {
+    const which = container.getAttribute("data-library");
+    const books = sets[which] || LENS_BOOKS;
+    const layout = SHELF_LAYOUT[which] || SHELF_LAYOUT.setup;
+    container.replaceChildren();
+
+    const shelf = document.createElement("div");
+    shelf.className = "shelf-level book-shelf";
+    const strip = document.createElement("div");
+    strip.className = "books";
+
+    books.forEach((book, idx) => {
+      const spine = document.createElement("span");
+      const lean = layout.leans.includes(idx);
+      const leanRight = (layout.leansRight || []).includes(idx);
+      spine.className =
+        "book" +
+        (book.ink === "dark" ? " book--dark" : "") +
+        (lean ? " book--lean" : "") +
+        (leanRight ? " book--lean-right" : "");
+      spine.style.background = book.color;
+      spine.style.flexBasis = `${layout.widths[idx % layout.widths.length]}px`;
+      spine.style.height = `${layout.heights[idx % layout.heights.length]}%`;
+      spine.title = book.full;
+      spine.textContent = book.spine;
+      strip.appendChild(spine);
+
+      // drop in any mid-row knick-knack that sits after this book
+      layout.objects
+        .filter((object) => object.at === idx)
+        .forEach((object) => strip.appendChild(makeObject(object.kind)));
+    });
+
+    // trailing knick-knacks round out the end of the shelf
+    layout.objects
+      .filter((object) => object.at === "end")
+      .forEach((object) => strip.appendChild(makeObject(object.kind)));
+
+    shelf.appendChild(strip);
+    container.appendChild(shelf);
+
+    // now that the spines are laid out, size each title to fill its spine
+    strip.querySelectorAll(".book").forEach(fitSpine);
+  });
+
+  // refit once the display font finishes loading, since its metrics differ
+  // from the fallback used on first paint
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      document.querySelectorAll("[data-library] .book").forEach(fitSpine);
+    });
+  }
+}
+
 function render() {
   elements.deviceState.textContent = state.listening
     ? state.speakerMode === "source"
@@ -147,6 +285,8 @@ function render() {
   triggerBudCue(state.lastSuggestion);
   if (elements.bud) {
     elements.bud.classList.toggle("bud--speaking", Boolean(state.speechSpeaking));
+    // Bud sleeps until a session starts; he's awake for the whole session.
+    elements.bud.classList.toggle("bud--sleeping", !state.active);
   }
   renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
@@ -274,7 +414,7 @@ function startSession(event) {
   state.phase = "Listening";
   state.conversationState = "Listening";
   state.transcript = [];
-  state.liveTranscript = "Listening for your objective — say it out loud now.";
+  state.liveTranscript = "Listening for your objective. Say it out loud now.";
   state.followUps = [];
   state.acceptedSuggestions = [];
   state.dismissedSuggestions = [];
@@ -288,7 +428,7 @@ function startSession(event) {
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
   state.lastConfidentSpeaker = null;
-  state.lastSuggestion = `Say your objective out loud — your first words set the goal (at least 20 words helps one-mic speaker detection lock onto your voice). Then say "${state.wakeWord}" to turn active coaching on.`;
+  state.lastSuggestion = "Im here, just tell me the objective and say the word when you need me.";
 
   if (state.speakerMode === "source") {
     startSourceSeparatedTranscription();
@@ -308,22 +448,30 @@ function renderObjectiveDisplay() {
     value.textContent = state.goal;
   } else if (state.awaitingObjective) {
     value.textContent = state.speakerMode === "diarize"
-      ? "Listening for your objective — say it out loud now. Aim for at least 20 words so one-mic speaker detection can calibrate to your voice."
-      : "Listening for your objective — say it out loud now. Aim for at least 20 words to give the coach clear context.";
+      ? "Listening for your objective. Say it out loud and aim for at least 20 words so one-mic speaker detection can calibrate to your voice."
+      : "Listening for your objective. Say it out loud and aim for at least 20 words to give the coach clear context.";
   } else {
-    value.textContent = "Start your session, then say your objective out loud. Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective so aim for at least 20 words.";
+    value.textContent = "Tell Bud who you are talking to, what you want from the conversation, and any other context. Your first words become the objective, so aim for at least 20 words.";
   }
 }
 
 function renderBackendStatus() {
   if (!state.health) {
+    elements.backendStatus.hidden = false;
     elements.backendStatus.textContent = "Checking backend...";
     return;
   }
 
-  elements.backendStatus.textContent = state.health.agentReady
-    ? `coach ready with ${state.health.model}`
-    : "coach needs OPENAI_API_KEY for model suggestions";
+  // when the coach is ready there's nothing to act on, so hide the line to
+  // free up room in the advanced settings; only surface the actionable warning
+  if (state.health.agentReady) {
+    elements.backendStatus.hidden = true;
+    elements.backendStatus.textContent = "";
+    return;
+  }
+
+  elements.backendStatus.hidden = false;
+  elements.backendStatus.textContent = "coach needs OPENAI_API_KEY for model suggestions";
 }
 
 async function fetchHealth() {
@@ -627,6 +775,16 @@ function float32ToPcm16(samples) {
   return buffer;
 }
 
+// The provider rejects a new live session while a previous one is still open
+// (error text mentions concurrent sessions, close code 1008). A stuck stream
+// can't be recovered in place, so point the user at the fix instead of a raw
+// error string.
+const CONCURRENT_SESSION_HELP =
+  "Too many live sessions are open. End this session, give me a second to groom myself, refresh the page, and then start another session.";
+function isConcurrentSessionError(text) {
+  return typeof text === "string" && /concurrent session|too many/i.test(text);
+}
+
 function createDiarizeSocket() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(`${protocol}//${window.location.host}/api/diarize-stream`);
@@ -658,14 +816,18 @@ function createDiarizeSocket() {
     }
 
     if (payload.type === "error") {
-      state.lastSuggestion = payload.error || `${providerName} streaming diarization failed.`;
+      const detail = payload.error || `${providerName} streaming diarization failed.`;
+      state.lastSuggestion = isConcurrentSessionError(detail) ? CONCURRENT_SESSION_HELP : detail;
       render();
       return;
     }
 
     if (payload.type === "closed") {
       const reason = payload.reason ? `: ${payload.reason}` : "";
-      state.lastSuggestion = `${providerName} stream closed (${payload.code || "unknown"})${reason}`;
+      state.lastSuggestion =
+        payload.code === 1008 || isConcurrentSessionError(payload.reason)
+          ? CONCURRENT_SESSION_HELP
+          : `${providerName} stream closed (${payload.code || "unknown"})${reason}`;
       render();
     }
   });
@@ -1344,6 +1506,12 @@ elements.speakerModeInput.addEventListener("change", () => {
   state.speakerMode = normalizeSpeakerMode(elements.speakerModeInput.value);
   render();
 });
+if (elements.coachModelInput) {
+  elements.coachModelInput.addEventListener("change", () => {
+    state.coachModel = elements.coachModelInput.value || state.coachModel;
+    renderBackendStatus();
+  });
+}
 if (elements.swapSpeakerButton) {
   elements.swapSpeakerButton.addEventListener("click", swapMeThem);
 }
@@ -1360,6 +1528,7 @@ elements.speechRateInput.addEventListener("input", updateSpeechSettings);
 elements.testVoiceButton.addEventListener("click", testVoice);
 elements.stopVoiceButton.addEventListener("click", stopSpeaking);
 
+renderLibrary();
 setupRecognition();
 fetchHealth();
 render();

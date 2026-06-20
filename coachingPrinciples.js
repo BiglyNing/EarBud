@@ -76,6 +76,22 @@ export const principles = [
   { book: "Getting to Yes", tags: ["negotiation"], principle: "Dig for the interest underneath their position; that's where the deal actually hides." },
   { book: "Getting to Yes", tags: ["negotiation"], principle: "Know your walkaway alternative; it sets how hard you can press without bluffing." },
 
+  // Start with No (Jim Camp)
+  { book: "Start with No", tags: ["negotiation", "persuasion"], principle: "Give them permission to say no; a real \"no\" starts the negotiation while a pressured \"yes\" just stalls it." },
+  { book: "Start with No", tags: ["negotiation", "power"], principle: "Kill your neediness — act fully ready to walk and the pressure shifts back onto them." },
+  { book: "Start with No", tags: ["negotiation", "rhetoric"], principle: "Ask open \"what\" and \"how\" questions that make them describe their own problem, doing your persuading for you." },
+
+  // ── DIFFICULT & HIGH-STAKES CONVERSATIONS ────────────────────────
+  // Crucial Conversations (Patterson, Grenny, McMillan, Switzler)
+  { book: "Crucial Conversations", tags: ["conflict", "rapport"], principle: "When they go defensive, stop arguing the point and rebuild safety first; nothing lands until they feel unthreatened." },
+  { book: "Crucial Conversations", tags: ["conflict", "strategy"], principle: "Open by stating what you actually want, so the talk can't drift into scoring points or winning." },
+  { book: "Crucial Conversations", tags: ["conflict", "rhetoric"], principle: "Use contrast to repair a misread: say what you don't mean, then what you do, before it hardens." },
+
+  // Difficult Conversations (Stone, Patton, Heen)
+  { book: "Difficult Conversations", tags: ["conflict", "negotiation"], principle: "Drop the blame frame; ask what each side contributed so they keep problem-solving instead of defending." },
+  { book: "Difficult Conversations", tags: ["conflict", "rapport"], principle: "Acknowledge the feeling before the logic; an unheard emotion blocks every argument you make." },
+  { book: "Difficult Conversations", tags: ["conflict", "reading"], principle: "Separate intent from impact — name the effect without accusing motive, so they can fix it without losing face." },
+
   // ── PERSUASION ───────────────────────────────────────────────────
   // Influence / Pre-Suasion (Robert Cialdini)
   { book: "Influence", tags: ["persuasion"], principle: "Give a small genuine concession or favor first; reciprocity makes them feel they owe you a yes." },
@@ -99,6 +115,11 @@ export const principles = [
   { book: "Thank You for Arguing", tags: ["rhetoric", "persuasion"], principle: "Repeat your key phrase; repetition makes a point feel both true and memorable." },
   { book: "Thank You for Arguing", tags: ["rhetoric", "conflict"], principle: "Concede a small point to win the big one; visible agreement disarms their resistance." },
 
+  // Made to Stick (Chip & Dan Heath)
+  { book: "Made to Stick", tags: ["rhetoric", "persuasion"], principle: "Make the point concrete and unexpected; one vivid image sticks where abstractions slide off." },
+  { book: "Made to Stick", tags: ["rhetoric"], principle: "Lead with a single core message and cut the rest; a stripped idea is the one they remember and repeat." },
+  { book: "Made to Stick", tags: ["rhetoric", "persuasion"], principle: "Wrap the ask in a short story, not statistics; people move on narrative, then justify with the numbers." },
+
   // ── RAPPORT & CHARISMA ───────────────────────────────────────────
   // How to Win Friends and Influence People (Dale Carnegie)
   { book: "How to Win Friends", tags: ["rapport", "persuasion"], principle: "Talk only in terms of what they want; people act for their reasons, never yours." },
@@ -119,7 +140,12 @@ export const principles = [
   // ── STATUS & SOCIAL DYNAMICS ─────────────────────────────────────
   // Impro (Keith Johnstone)
   { book: "Impro", tags: ["status"], principle: "Every line is a status move; stillness and a low, steady voice raise you, fidgeting lowers you." },
-  { book: "Impro", tags: ["status", "rapport"], principle: "Deliberately lower your status to make a guarded person feel safe enough to open up." }
+  { book: "Impro", tags: ["status", "rapport"], principle: "Deliberately lower your status to make a guarded person feel safe enough to open up." },
+
+  // Pitch Anything (Oren Klaff)
+  { book: "Pitch Anything", tags: ["status", "power"], principle: "Win the frame, not the argument; whoever sets the terms of the exchange quietly controls it." },
+  { book: "Pitch Anything", tags: ["status", "rhetoric"], principle: "Make a small confident frame-control move (\"I've only got a few minutes\") so you're chased, not chasing." },
+  { book: "Pitch Anything", tags: ["persuasion", "rhetoric"], principle: "Create intrigue with one tight, vivid stake instead of a wall of detail; attention follows tension, not information." }
 ];
 
 // Pick the most relevant principles for the current situation.

@@ -22,6 +22,15 @@
   --gold: #BA9E61;
   --brick: #A8392B;
 
+  /* Bookshelf wood (derived from clay/maroon/gold) */
+  --wood: #8a5a3c;
+  --wood-light: #a87a55;
+  --wood-dark: #5e3a24;
+  --wood-deep: #3f2616;
+  --shelf-edge: #6b4326;
+  --carve-hi: rgba(255, 243, 225, 0.45);
+  --carve-lo: rgba(45, 26, 12, 0.60);
+
   --rust: var(--clay);
   --persimmon: var(--clay-deep);
   --orange: var(--peach);
@@ -82,25 +91,31 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 /* ---------- Top bar ---------- */
 .topbar {
+  position: relative;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* match the board's 3 columns so the tagline sits in the middle track,
+     centered over Bud rather than over the whole header */
+  grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.25fr) minmax(280px, 0.95fr);
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   padding-bottom: 12px;
   border-bottom: 1.5px solid var(--line);
   animation: rise 0.5s ease both;
 }
 
 .topbar-tagline {
-  margin: 0;
+  grid-column: 2;
   justify-self: center;
+  align-self: center;
+  margin: 0;
   text-align: center;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.12rem;
   line-height: 1.2;
   color: var(--clay);
+  pointer-events: none;
 }
 
 .brandmark {
@@ -281,6 +296,27 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   z-index: 0;
   animation: budHalo 4.5s ease-in-out infinite;
 }
+
+/* a small stack of books on the floor beside Bud, our scholar owl — purely
+   decorative, sits behind him so he reads as standing next to it */
+.bud-books {
+  position: absolute;
+  bottom: 8%;
+  left: 17%;
+  width: 92px;
+  height: 64px;
+  z-index: 0;
+  pointer-events: none;
+}
+.bud-books i {
+  position: absolute;
+  border-radius: 3px;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 3px 5px rgba(0, 0, 0, 0.22);
+}
+.bud-books i:nth-child(1) { bottom: 0; left: 0; width: 92px; height: 21px; background: #8a5341; }
+.bud-books i:nth-child(2) { bottom: 19px; left: 7px; width: 78px; height: 20px; background: #407732; transform: rotate(-2.5deg); }
+.bud-books i:nth-child(3) { bottom: 38px; left: 3px; width: 67px; height: 19px; background: #BA9E61; transform: rotate(3deg); }
 
 .phase-chip {
   position: absolute;
@@ -628,7 +664,7 @@ input:focus, select:focus, textarea:focus {
 .more > summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   list-style: none;
   cursor: pointer;
@@ -643,6 +679,7 @@ input:focus, select:focus, textarea:focus {
 
 .more > summary::after {
   content: "+";
+  margin-left: auto;
   font-weight: 800;
   color: var(--clay);
   font-size: 1.2rem;
@@ -805,4 +842,368 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 560px) {
   .field-row { grid-template-columns: 1fr; }
   .brandmark-tag { display: none; }
+}
+
+/* =====================================================================
+   Bookshelf sidebars — Setup & Transcript become wooden shelves.
+   The wood frame is chrome; real controls stay on cream "planks" so
+   text never sits on dark wood. Empty space fills with rows of book
+   spines (the coaching lenses), each row resting on a wooden board.
+   ===================================================================== */
+.shelf {
+  padding: 0;
+  overflow: hidden;
+  border-color: var(--wood-deep);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0 3px, transparent 3px 11px),
+    linear-gradient(180deg, var(--wood-light), var(--wood) 16%, var(--wood) 84%, var(--wood-dark));
+  box-shadow:
+    var(--shadow),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 7px rgba(0, 0, 0, 0.35);
+}
+
+/* crown rail with the carved section title */
+.shelf-crown {
+  flex: 0 0 auto;
+  padding: 12px 16px 14px;
+  border-bottom: 3px solid var(--wood-deep);
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  box-shadow: inset 0 -4px 7px rgba(0, 0, 0, 0.28);
+}
+
+/* the "text built into it" — engraved, not printed */
+.carved {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wood-dark);
+  text-shadow: 0 1px 0 var(--carve-hi), 0 -1px 1px var(--carve-lo);
+  mix-blend-mode: multiply;
+}
+
+/* the interior is the dark back panel that holds the levels */
+.shelf-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--shelf-edge) transparent;
+}
+.shelf-body::-webkit-scrollbar { width: 9px; }
+.shelf-body::-webkit-scrollbar-thumb { background: var(--shelf-edge); border-radius: 8px; }
+
+/* one level of the shelf, capped by a wooden divider board (::after) */
+.shelf-level {
+  position: relative;
+  flex: 0 0 auto;
+  /* symmetric wood gap above and below the box (bottom = 8 + 13px board),
+     so each cream box sits centered between its shelf dividers */
+  padding: 8px 14px 21px;
+}
+.shelf-level::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 13px;
+  background: linear-gradient(180deg, var(--wood-light), var(--wood) 45%, var(--wood-dark));
+  border-top: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.32);
+  z-index: 0;
+}
+.shelf-level > * { position: relative; z-index: 1; }
+/* min-height reserves room for the cream placard (~85px) plus this level's own
+   29px padding — the bottom 13px of which is the wood divider board. Without it
+   the grow level shrinks under its content when Spoken suggestions opens and the
+   board clips up into the transcript box; instead the shelf body scrolls. */
+.shelf-level.grow { flex: 1 1 auto; min-height: 118px; display: flex; flex-direction: column; }
+
+/* cream placards: real controls rest on these so text stays readable */
+.shelf-level > .play-steps,
+.shelf-level > .goal-form,
+.shelf-level > .live-transcript-wrap,
+.shelf-level > .transcript-list,
+.shelf-level > .more {
+  margin: 0;
+  background: linear-gradient(180deg, var(--field), var(--cream));
+  border: 1.5px solid var(--wood-deep);
+  border-radius: 11px;
+  padding: 13px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 3px 0 var(--shelf-edge),
+    0 5px 7px rgba(0, 0, 0, 0.28);
+}
+.shelf-level.grow > .transcript-list {
+  flex: 1 1 auto;
+  min-height: 56px;
+  overflow-y: auto;
+}
+.shelf-level > .more + .more { margin-top: 11px; }
+
+/* the 1·2·3 steps stay tight at the top — no stretched blank space in the box */
+.shelf .play-steps { gap: 9px; }
+.shelf .play-steps li { font-size: 1.12rem; gap: 12px; color: var(--ink); }
+.shelf .play-steps span { width: 33px; height: 33px; font-size: 1.02rem; }
+
+/* larger, more readable copy throughout the two side shelves */
+.shelf .goal-form { gap: 9px; }
+.shelf label { font-size: 1.04rem; }
+.shelf input, .shelf select, .shelf textarea { font-size: 1.02rem; }
+/* the objective is the headline of the setup box — size it up so it fills the
+   box that scales with the window instead of leaving blank space below it */
+.shelf .objective-display .meta-label { font-size: 0.92rem; margin-bottom: 6px; }
+.shelf .objective-display strong { font-size: 1.22rem; line-height: 1.45; }
+.shelf .helper-text { font-size: 0.98rem; }
+.shelf .live-transcript { font-size: 1.06rem; }
+.shelf .transcript-list li { font-size: 1.07rem; }
+.shelf .line-meta { font-size: 0.86rem; }
+.shelf .more > summary { font-size: 1.05rem; }
+.shelf .followup-list, .shelf .review-box { font-size: 1.05rem; }
+
+/* the bookcase sits at the bottom and takes only the height its rows need, so
+   the readable content above gets the room. */
+.bookcase {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+/* The Setup books always sit a fixed distance below the divider of the box
+   above them — the bookcase only takes the height its rows need. */
+.col-setup .bookcase { flex: 0 0 auto; }
+
+/* Instead, the goal box directly above the books soaks up whatever vertical
+   slack the window/zoom creates, so its cream placard scales to fill the space
+   rather than letting a dark gap open up over the spines. */
+.col-setup .shelf-level--fill { flex: 1 1 auto; display: flex; flex-direction: column; }
+/* the form rows distribute through the extra height (objective pinned to the
+   top, Start Session to the bottom, even gaps between) so the box reads as
+   filled instead of top-packed with blank space below. gap stays the minimum. */
+.col-setup .shelf-level--fill > .goal-form { flex: 1 1 auto; align-content: space-between; }
+
+/* a shelf row: narrow book spines + a knick-knack, resting on a wooden board */
+.book-shelf { padding: 5px 14px 11px; }
+.books {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 176px;
+  padding-left: 2px;
+  overflow: visible;
+}
+
+/* tall narrow spine — flex-grows to fill the row; basis + height set per book */
+.book {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 22px;
+  max-width: 44px;
+  height: 92%;
+  border-radius: 3px 3px 1px 1px;
+  border: 1.5px solid rgba(0, 0, 0, 0.42);
+  box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.22),
+    inset -3px 0 0 rgba(0, 0, 0, 0.24);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* top padding clears the gold/maroon header band, bottom keeps letters off
+     the board; the asymmetry centers the title between band and spine end.
+     Font size is fit per-spine in JS (fitSpine) so each title fills its spine. */
+  padding: 16px 0 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.52rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.book::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gold);
+  opacity: 0.85;
+}
+.book--dark { color: rgba(40, 30, 16, 0.85); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); }
+.book--dark::before { background: var(--maroon); }
+
+/* one gentle leaner per row for realism. The top swings left toward its
+   neighbor, so reserve extra room on that side: the title just kisses the
+   neighbouring spine instead of clipping through it. */
+.book--lean {
+  transform: rotate(-4deg);
+  transform-origin: bottom right;
+  margin: 0 1px 0 9px;
+}
+/* mirror of the above — top swings right, so reserve the room on the right */
+.book--lean-right {
+  transform: rotate(4deg);
+  transform-origin: bottom left;
+  margin: 0 9px 0 1px;
+}
+
+/* ---- shelf knick-knacks (simple primitives — easy to redraw in Figma) ---- */
+.object { position: relative; flex: 0 0 auto; align-self: flex-end; margin: 0 4px; }
+
+/* Pokeball: two-tone circle + center button */
+.object--pokeball {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 3px solid #1c1c1c;
+  background: linear-gradient(180deg, #df584a 0 47%, #1c1c1c 47% 53%, #f3ece0 53% 100%);
+  box-shadow: inset -4px -4px 9px rgba(0, 0, 0, 0.22), inset 4px 4px 8px rgba(255, 255, 255, 0.22);
+}
+.object--pokeball::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #f3ece0;
+  border: 4px solid #1c1c1c;
+}
+
+/* Potted plant: pot + leafy cluster (3 ellipses) */
+.object--plant { width: 60px; height: 84px; }
+.object--plant::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 34px;
+  border-radius: 4px 4px 9px 9px;
+  background: linear-gradient(180deg, #c87a4a, #a55f37);
+  border: 2px solid #7d4423;
+}
+.object--plant::after {
+  content: "";
+  position: absolute;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 57px;
+  background:
+    radial-gradient(18px 28px at 50% 58%, #4f8a3a 0 72%, transparent 74%),
+    radial-gradient(15px 25px at 26% 74%, #3f7730 0 72%, transparent 74%),
+    radial-gradient(15px 25px at 74% 74%, #3f7730 0 72%, transparent 74%);
+}
+
+/* Stack of three horizontal books */
+.object--stack { width: 74px; height: 50px; }
+.object--stack i {
+  position: absolute;
+  height: 15px;
+  border-radius: 3px;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.object--stack i:nth-child(1) { bottom: 0; left: 0; width: 74px; background: #b06a4f; }
+.object--stack i:nth-child(2) { bottom: 13px; left: 5px; width: 64px; background: #7c9a5a; }
+.object--stack i:nth-child(3) { bottom: 26px; left: 2px; width: 55px; background: #c9a24a; }
+
+/* Mug: solid rounded body + simple C-handle.
+   Flat fill, one corner radius, one stroke colour — trivial to redraw. */
+.object--mug { width: 54px; height: 44px; }
+.object--mug::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 37px;
+  height: 40px;
+  border-radius: 6px;
+  background: #6f9e98;
+  border: 2px solid #3c5754;
+}
+.object--mug::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 0;
+  width: 20px;
+  height: 23px;
+  border: 5px solid #3c5754;
+  border-left: none;
+  border-radius: 0 13px 13px 0;
+}
+
+/* =====================================================================
+   Bud dozes until the codeword wakes him (.bud--sleeping toggled in JS).
+   ===================================================================== */
+.bud--sleeping { animation: budSleepBob 6s ease-in-out infinite; }
+.bud--sleeping #bud-wing-l,
+.bud--sleeping #bud-wing-r { animation: none; }
+.bud--sleeping #bud-eyelids { opacity: 1; transform: scaleY(1); animation: none; }
+/* eyelashes only show on the closed (sleeping) eyes */
+#bud-lashes { opacity: 0; }
+#bud-lashes path { fill: none; stroke: #1E1E1E; stroke-width: 3.5; stroke-linecap: round; }
+.bud--sleeping #bud-lashes { opacity: 1; }
+.bud-stage:has(.bud--sleeping)::before { animation: none; opacity: 0.3; }
+.bud-stage:has(.bud--sleeping) .bud-zzz { opacity: 1; }
+
+.bud-zzz {
+  position: absolute;
+  top: 16%;
+  right: 31%;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--maroon);
+}
+.bud-zzz span { animation: zzzFloat 3s ease-in-out infinite; }
+.bud-zzz span:nth-child(1) { font-size: 0.9rem; animation-delay: 0s; }
+.bud-zzz span:nth-child(2) { font-size: 1.15rem; animation-delay: 0.45s; }
+.bud-zzz span:nth-child(3) { font-size: 1.5rem; animation-delay: 0.9s; }
+
+@keyframes budSleepBob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-4px) rotate(-1.5deg); }
+}
+@keyframes zzzFloat {
+  0% { opacity: 0; transform: translateY(6px) rotate(-6deg); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-16px) rotate(8deg); }
+}
+
+/* shelves grow with content (no inner scroll) once columns stack */
+@media (max-width: 1040px), (max-height: 600px) {
+  .shelf { overflow: visible; }
+  .shelf-body { overflow: visible; }
+  .shelf-level.grow > .transcript-list { overflow: visible; max-height: 340px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bud--sleeping,
+  .bud-zzz span { animation: none; }
 }
