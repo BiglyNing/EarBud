@@ -431,6 +431,95 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
+app.post("/api/review", async (req, res) => {
+  if (!openai) {
+    res.status(503).json({
+      error: "OPENAI_API_KEY is not set. Add it to your environment or .env file to enable AI reviews."
+    });
+    return;
+  }
+
+  const { partner, goal, transcript, accepted, dismissed, followUps } = req.body || {};
+  const coachModel = resolveCoachModel(req.body?.model);
+  // A review runs once at session end and isn't latency-sensitive, so let it
+  // think harder than the live coach (which defaults to "minimal") for depth.
+  const reasoningEffort = REASONING_EFFORTS.has(req.body?.reasoningEffort) ? req.body.reasoningEffort : "medium";
+
+  // The whole conversation matters for a review, but cap it to keep tokens sane.
+  const conversation = Array.isArray(transcript)
+    ? transcript
+      .filter((line) => !line.codeword)
+      .slice(-80)
+      .map((line) => `${getSpeakerLabel(line.speaker)}: ${line.text || ""}`)
+      .join("\n")
+    : "";
+
+  if (!conversation.trim()) {
+    res.status(400).json({ error: "There is no conversation to review yet." });
+    return;
+  }
+
+  const systemPrompt = [
+    "You are EarBud, a private conversation coach writing a candid post-conversation review for the user.",
+    "You receive the user's objective and the full labeled transcript. Me is the EarBud user; Them is the other person.",
+    "Assess how well Me advanced their objective, grounded ONLY in what the transcript actually shows.",
+    "Be specific and reference real moments from the conversation; never invent things that did not happen.",
+    "Be honest and constructive: name what genuinely worked, what was weak, and what to do differently next time.",
+    "Address the user directly as \"you\". Keep every list item to a single concrete sentence.",
+    "outcome must be exactly one of: Achieved, Partially achieved, Not achieved, Inconclusive.",
+    "summary is 1-2 sentences on how it went overall. Each list should have 1-3 items; use an empty list only if truly nothing applies."
+  ].join("\n");
+
+  const userPrompt = [
+    `Conversation partner: ${partner || "unknown"}`,
+    `Your objective: ${goal || "(no explicit objective was set)"}`,
+    `Suggestions you accepted: ${Array.isArray(accepted) && accepted.length ? accepted.join(" | ") : "(none)"}`,
+    `Suggestions you dismissed: ${Array.isArray(dismissed) && dismissed.length ? dismissed.join(" | ") : "(none)"}`,
+    `Follow-ups captured: ${Array.isArray(followUps) && followUps.length ? followUps.join(" | ") : "(none)"}`,
+    "Full transcript (Me = you):",
+    conversation,
+    "Write the review now."
+  ].join("\n\n");
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: coachModel,
+      reasoning_effort: reasoningEffort,
+      max_completion_tokens: 4000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "conversation_review",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              outcome: { type: "string" },
+              summary: { type: "string" },
+              whatWorked: { type: "array", items: { type: "string" } },
+              improvements: { type: "array", items: { type: "string" } },
+              nextSteps: { type: "array", items: { type: "string" } }
+            },
+            required: ["outcome", "summary", "whatWorked", "improvements", "nextSteps"]
+          }
+        }
+      }
+    });
+
+    const review = JSON.parse(completion.choices?.[0]?.message?.content || "{}");
+    res.json(review);
+  } catch (error) {
+    // Message only — keep transcript/goal content out of server logs.
+    console.error("Review request failed:", error?.message || error);
+    res.status(502).json({ error: "The review backend failed to generate a review." });
+  }
+});
+
 function parseJsonMessage(message) {
   try {
     return JSON.parse(message.toString());

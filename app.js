@@ -1453,13 +1453,60 @@ function endSession() {
   state.phase = "Review";
   state.conversationState = "Review";
   state.currentSuggestion = "";
+  const hasConversation = state.transcript.filter((line) => !line.codeword).length > 0;
   if (state.transcript.length > 0) {
     addFollowUp(`Review whether the conversation with ${state.partner} achieved: ${state.goal}`);
   }
-  state.review = generateLocalReview();
+  // Show the basic local summary immediately, then ask the model for a real
+  // review and swap it in. The local one stays as the fallback if that fails.
+  const localReview = generateLocalReview();
+  state.review = hasConversation ? "Bud is reviewing the conversation…" : localReview;
   state.lastAction = "Session ended";
   state.lastSuggestion = "Session ended. Review follow-ups, then delete local session data when finished.";
   render();
+  if (hasConversation) requestReview(localReview);
+}
+
+async function requestReview(fallback) {
+  try {
+    const response = await fetch("/api/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        partner: state.partner,
+        goal: state.goal,
+        transcript: state.transcript,
+        accepted: state.acceptedSuggestions.map((s) => s.text),
+        dismissed: state.dismissedSuggestions.map((s) => s.text),
+        followUps: state.followUps,
+        model: state.coachModel
+      })
+    });
+    if (!response.ok) throw new Error("review request failed");
+    state.review = formatReview(await response.json());
+  } catch {
+    // model unavailable (e.g. no API key) — keep the basic local summary
+    state.review = fallback;
+  }
+  render();
+}
+
+function formatReview(data) {
+  const lines = [];
+  if (data.outcome) lines.push(`Outcome: ${data.outcome}`);
+  if (data.summary) lines.push("", data.summary);
+
+  const section = (title, items) => {
+    if (Array.isArray(items) && items.length) {
+      lines.push("", `${title}:`);
+      items.forEach((item) => lines.push(`• ${item}`));
+    }
+  };
+  section("What worked", data.whatWorked);
+  section("What to improve", data.improvements);
+  section("Next steps", data.nextSteps);
+
+  return lines.join("\n").trim() || "No review was generated.";
 }
 
 function generateLocalReview() {
