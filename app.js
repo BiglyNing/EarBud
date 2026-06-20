@@ -10,6 +10,9 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance;
 const speechSynthesis = window.speechSynthesis;
 
+// Bud's house voice, shown in the picker simply as "Default Voice".
+const DEFAULT_BUD_VOICE = "Google UK English Male";
+
 const state = {
   active: false,
   paused: false,
@@ -18,7 +21,7 @@ const state = {
   requestingAgent: false,
   partner: "",
   goal: "",
-  tone: "calm",
+  budVoice: DEFAULT_BUD_VOICE,
   wakeWord: "bud",
   coachModel: "gpt-5-mini",
   coachReasoningEffort: "minimal",
@@ -73,7 +76,8 @@ const state = {
 const elements = {
   goalForm: document.querySelector("#goalForm"),
   objectiveDisplay: document.querySelector("#objectiveDisplay"),
-  toneInput: document.querySelector("#toneInput"),
+  budVoiceInput: document.querySelector("#budVoiceInput"),
+  previewVoiceButton: document.querySelector("#previewVoiceButton"),
   wakeWordInput: document.querySelector("#wakeWordInput"),
   coachModelInput: document.querySelector("#coachModelInput"),
   coachSpeedInput: document.querySelector("#coachSpeedInput"),
@@ -285,8 +289,9 @@ function render() {
   triggerBudCue(state.lastSuggestion);
   if (elements.bud) {
     elements.bud.classList.toggle("bud--speaking", Boolean(state.speechSpeaking));
-    // Bud sleeps until a session starts; he's awake for the whole session.
-    elements.bud.classList.toggle("bud--sleeping", !state.active);
+    // Bud sleeps until a session starts; he's also awake any time he's
+    // speaking (e.g. the voice test) so he doesn't talk in his sleep.
+    elements.bud.classList.toggle("bud--sleeping", !state.active && !state.speechSpeaking);
   }
   renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
@@ -392,13 +397,26 @@ function renderVoiceControls() {
   elements.voiceStatus.classList.toggle("active", supported && state.spokenSuggestions);
 }
 
+// Bud's wake-up one-liners — a random quip greets you when a session starts,
+// since he sleeps until then. Purely flavor; the objective guidance lives in
+// the objective display.
+const BUD_WAKE_LINES = [
+  "That was the strangest dream about persuasion theory ever.",
+  "Asleep? No, I was just thinking bro, trust.",
+  "Just finished the Art of War again. I'm ready for anything.",
+  "Is it that time of day again? Why can't I just study Rhetoric."
+];
+
+function pickWakeLine() {
+  return BUD_WAKE_LINES[Math.floor(Math.random() * BUD_WAKE_LINES.length)];
+}
+
 function startSession(event) {
   event.preventDefault();
 
   state.partner = "this person";
   state.goal = "";
   state.awaitingObjective = true;
-  state.tone = elements.toneInput.value;
   state.wakeWord = normalizeWakeWord(elements.wakeWordInput.value);
   if (elements.coachModelInput) {
     state.coachModel = elements.coachModelInput.value || state.coachModel;
@@ -428,7 +446,7 @@ function startSession(event) {
   state.knownClusters = [];
   state.lastDiarizedSpeaker = null;
   state.lastConfidentSpeaker = null;
-  state.lastSuggestion = "Im here, just tell me the objective and say the word when you need me.";
+  state.lastSuggestion = pickWakeLine();
 
   if (state.speakerMode === "source") {
     startSourceSeparatedTranscription();
@@ -1080,7 +1098,6 @@ async function requestAgentSuggestion(line = state.transcript[state.transcript.l
       body: JSON.stringify({
         partner: state.partner,
         goal: state.goal,
-        tone: state.tone,
         wakeWord: state.wakeWord,
         model: state.coachModel,
         reasoningEffort: state.coachReasoningEffort,
@@ -1185,6 +1202,8 @@ function speakText(text) {
 
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
+  const voice = getSelectedVoice();
+  if (voice) utterance.voice = voice;
   utterance.volume = state.speechVolume;
   utterance.rate = state.speechRate;
   utterance.pitch = 1;
@@ -1231,6 +1250,56 @@ function updateSpeechSettings() {
 
 function testVoice() {
   speakText("Spoken suggestions are ready.");
+}
+
+// The browser's TTS voices load asynchronously, so populate the picker now and
+// again on the voiceschanged event. value = the SpeechSynthesisVoice.name.
+function getSelectedVoice() {
+  if (!speechSynthesis || !state.budVoice) return null;
+  return speechSynthesis.getVoices().find((v) => v.name === state.budVoice) || null;
+}
+
+function populateVoices() {
+  const select = elements.budVoiceInput;
+  if (!select || !speechSynthesis) return;
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+
+  // Prefer English voices for an English-speaking coach, but fall back to all.
+  const english = voices.filter((v) => /^en\b|^en-/i.test(v.lang));
+  const list = english.length ? english : voices;
+
+  select.replaceChildren();
+  list.forEach((voice) => {
+    const option = document.createElement("option");
+    option.value = voice.name;
+    // Bud's house voice (Google UK English Male) is shown as "Default Voice"
+    option.textContent =
+      voice.name === DEFAULT_BUD_VOICE ? "Default Voice" : `${voice.name} (${voice.lang})`;
+    select.appendChild(option);
+  });
+
+  // select the saved/default voice if present, otherwise the first available
+  if (list.some((voice) => voice.name === state.budVoice)) {
+    select.value = state.budVoice;
+  } else {
+    state.budVoice = list[0].name;
+    select.value = state.budVoice;
+  }
+}
+
+// Speak a sample in whatever voice the dropdown currently shows. Syncing from
+// the select first means the preview button works even when the selection
+// didn't change (clicking the already-selected voice still plays).
+function previewBudVoice() {
+  state.budVoice = elements.budVoiceInput.value;
+  speakText("Hi, I'm Bud. I'll sound like this.");
+}
+
+function changeBudVoice() {
+  state.lastAction = "Voice changed";
+  render();
+  previewBudVoice();
 }
 
 function addFollowUp(text) {
@@ -1527,8 +1596,15 @@ elements.speechVolumeInput.addEventListener("input", updateSpeechSettings);
 elements.speechRateInput.addEventListener("input", updateSpeechSettings);
 elements.testVoiceButton.addEventListener("click", testVoice);
 elements.stopVoiceButton.addEventListener("click", stopSpeaking);
+elements.budVoiceInput.addEventListener("change", changeBudVoice);
+elements.previewVoiceButton.addEventListener("click", previewBudVoice);
 
 renderLibrary();
 setupRecognition();
 fetchHealth();
+populateVoices();
+if (speechSynthesis) {
+  // voices often aren't ready on first paint; refill when the browser loads them
+  speechSynthesis.addEventListener("voiceschanged", populateVoices);
+}
 render();

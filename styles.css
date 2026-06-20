@@ -628,6 +628,23 @@ select {
   padding-right: 34px;
 }
 
+/* voice picker: dropdown + a play button that previews the selected voice */
+.voice-pick-row { display: flex; gap: 6px; align-items: stretch; }
+.voice-pick-row select { flex: 1 1 auto; min-width: 0; }
+.voice-preview-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  padding: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--clay-deep);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.voice-preview-btn:hover { background: var(--cream); border-color: var(--clay); }
+.voice-preview-btn:active { transform: translateY(1px); }
+
 input::placeholder, textarea::placeholder { color: var(--faint); }
 input[type="checkbox"], input[type="range"] { width: auto; }
 input[type="range"] { accent-color: var(--clay); }
@@ -829,9 +846,16 @@ input:focus, select:focus, textarea:focus {
   body { overflow: auto; }
   .stage { height: auto; min-height: 100dvh; }
   .board { grid-template-columns: 1fr; }
+  /* the topbar borrows the board's 3-col grid on desktop to center the tagline
+     over Bud; that demands ~900px, so collapse it here to avoid overflow */
+  .topbar { grid-template-columns: 1fr auto; }
+  .topbar-tagline { display: none; }
   .col { overflow: visible; }
   .bud-stage { min-height: 320px; }
-  .bud { height: auto; max-height: 340px; }
+  /* Bud's SVG has only a viewBox (no width/height), so it has no intrinsic
+     size — width:auto + height:auto would collapse it to nothing on mobile.
+     Give it a definite height and let width follow the aspect ratio. */
+  .bud { height: min(56vh, 340px); width: auto; max-width: 100%; }
   .transcript-list { max-height: 340px; }
 }
 
