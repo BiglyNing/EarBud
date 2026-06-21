@@ -85,7 +85,6 @@ const elements = {
   speakerModeStatus: document.querySelector("#speakerModeStatus"),
   backendStatus: document.querySelector("#backendStatus"),
   deviceState: document.querySelector("#deviceState"),
-  phaseChip: document.querySelector("#phaseChip"),
   suggestionBox: document.querySelector("#suggestionBox"),
   conversationState: document.querySelector("#conversationState"),
   coachLens: document.querySelector("#coachLens"),
@@ -103,7 +102,6 @@ const elements = {
   sessionStatus: document.querySelector("#sessionStatus"),
   reviewBox: document.querySelector("#reviewBox"),
   followupList: document.querySelector("#followupList"),
-  voiceStatus: document.querySelector("#voiceStatus"),
   spokenSuggestionsInput: document.querySelector("#spokenSuggestionsInput"),
   speechFrequencyInput: document.querySelector("#speechFrequencyInput"),
   speechVolumeInput: document.querySelector("#speechVolumeInput"),
@@ -277,11 +275,6 @@ function render() {
       ? "Mic standby"
       : "Typed mode";
 
-  elements.phaseChip.textContent = state.requestingAgent
-    ? "Thinking"
-    : state.coachingActive
-      ? "Coaching On"
-      : state.phase;
   elements.suggestionBox.textContent = state.lastSuggestion;
   triggerBudCue(state.lastSuggestion);
   if (elements.bud) {
@@ -381,14 +374,6 @@ function renderVoiceControls() {
   elements.speechRateInput.disabled = !supported || !state.spokenSuggestions;
   elements.testVoiceButton.disabled = !supported;
   elements.stopVoiceButton.disabled = !supported || !state.speechSpeaking;
-  elements.voiceStatus.textContent = !supported
-    ? "Unavailable"
-    : state.speechSpeaking
-      ? "Speaking"
-      : state.spokenSuggestions
-        ? "On"
-        : "Off";
-  elements.voiceStatus.classList.toggle("active", supported && state.spokenSuggestions);
 }
 
 // Bud's wake-up one-liners — a random quip greets you when a session starts,

@@ -263,13 +263,6 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   animation: pulse 1.8s ease-out infinite;
 }
 
-.inline-dot {
-  min-height: 22px;
-  padding: 2px 9px;
-  font-size: 0.72rem;
-  border-width: 1px;
-}
-
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(64, 119, 50, 0.5); }
   70% { box-shadow: 0 0 0 7px rgba(64, 119, 50, 0); }
@@ -317,24 +310,6 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .bud-books i:nth-child(1) { bottom: 0; left: 0; width: 92px; height: 21px; background: #8a5341; }
 .bud-books i:nth-child(2) { bottom: 19px; left: 7px; width: 78px; height: 20px; background: #407732; transform: rotate(-2.5deg); }
 .bud-books i:nth-child(3) { bottom: 38px; left: 3px; width: 67px; height: 19px; background: #BA9E61; transform: rotate(3deg); }
-
-.phase-chip {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  border: 1.5px solid var(--line-strong);
-  border-radius: 999px;
-  padding: 4px 13px;
-  background: var(--field);
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
 
 .bud {
   position: relative;
@@ -877,6 +852,7 @@ input:focus, select:focus, textarea:focus {
 .shelf {
   padding: 0;
   overflow: hidden;
+  border-radius: 0;
   border-color: var(--wood-deep);
   background:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 7px),

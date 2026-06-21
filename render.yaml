@@ -18,8 +18,6 @@ services:
         value: gpt-5-mini
       - key: OPENAI_REASONING_EFFORT
         value: minimal
-      - key: OPENAI_TRANSCRIBE_MODEL
-        value: gpt-4o-mini-transcribe
       - key: ASSEMBLYAI_MAX_SPEAKERS
         value: "2"
       # Turn endpointing — tuned snappier than code defaults (0.8 / 1000 / 3000)
