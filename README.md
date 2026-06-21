@@ -62,8 +62,8 @@ Bud encompasses all the features of a great coach and more:
 EarBud is a small Node.js app that serves the website and runs the backend along with two AI services that handle the listening and the coaching.
 
 **The browser app**
-- Plain JavaScript, HTML, and CSS, no framework. The whole frontend lives in `index.html`, `styles.css`, and `app.js`.
-- `pcm-worklet.js` is an audio worklet that takes the raw microphone (and, on calls, a shared tab's audio) and converts it into 16 kHz PCM16, the format the transcription service expects.
+- JavaScript, HTML, and CSS, with no framework. The whole frontend lives in `index.html`, `styles.css`, and `app.js`.
+- `pcm-worklet.js` is an audio worklet that takes the raw microphone (and, on calls, a shared tab's audio) and converts it into 16 kHz PCM16, which is the format the transcription service expects.
 - If no AssemblyAI key is set, it falls back to the browser's built in speech recognition so you can still try it out.
 
 **The server**
