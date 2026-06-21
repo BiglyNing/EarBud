@@ -24,6 +24,10 @@ Nothing out there helps while it is happening. Notes are passive, summarizers on
 
 ## Screenshots & Demo
 
+**Watch the demo** (click to play on YouTube)
+
+[![EarBud demo video](https://img.youtube.com/vi/PHzw6_PkUc8/maxresdefault.jpg)](https://youtu.be/PHzw6_PkUc8)
+
 **Bud waiting for a session**
 
 Pick your voice, codeword, and conversation type, then say your objective to wake Bud up.
@@ -238,7 +242,7 @@ All settings are read from the environment (use `.env` locally). The model and r
 | `ASSEMBLYAI_DEBUG` | Logs each turn to the server console | unset |
 | `PORT` | Port the server listens on | `3000` |
 
-The deployed `render.yaml` tunes turn endpointing snappier than the code defaults above so the coach reacts faster: `ASSEMBLYAI_EOT_CONFIDENCE=0.6`, `ASSEMBLYAI_MIN_SILENCE=500`, `ASSEMBLYAI_MAX_SILENCE=1600`.
+The deployed `render.yaml` lowers only the max turn silence (`ASSEMBLYAI_MAX_SILENCE=2000`, vs the `3000` code default) so the coach reacts a little faster at the end of a turn; `ASSEMBLYAI_EOT_CONFIDENCE` (`0.8`) and `ASSEMBLYAI_MIN_SILENCE` (`1000`) match the code defaults above.
 
 ---
 

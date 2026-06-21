@@ -20,8 +20,9 @@ services:
         value: minimal
       - key: ASSEMBLYAI_MAX_SPEAKERS
         value: "2"
-      # Turn endpointing — tuned snappier than code defaults (0.8 / 1000 / 3000)
-      # so the coach reacts faster. Keep in sync with local .env.
+      # Turn endpointing — confidence and min-silence match the code defaults
+      # (0.8 / 1000); only max-silence is lowered (2000 vs the 3000 default) so
+      # the coach reacts a little faster at turn end. Keep in sync with local .env.
       - key: ASSEMBLYAI_EOT_CONFIDENCE
         value: "0.8"
       - key: ASSEMBLYAI_MIN_SILENCE

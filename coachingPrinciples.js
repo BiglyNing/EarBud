@@ -14,10 +14,12 @@
 //
 // HOW THIS IS USED
 //   - Loaded once at server start (held in memory, not re-read per request).
-//   - On each /api/coach call, selectPrinciples() picks only the entries whose
-//     tags match the current conversation situation, so a large library does
-//     not cost full tokens on every call.
-//   - formatPrinciples() renders the chosen entries into the system prompt.
+//   - The library is small, so server.js sends ALL of it on each /api/coach
+//     call via formatPrinciples(principles); the model then picks the single
+//     most relevant tactic and names it in the `lens` field.
+//   - selectPrinciples() can narrow the set by situation tags if the library
+//     ever grows large enough that full inclusion costs too many tokens. It is
+//     not currently wired into the request path (kept as a tested helper).
 //
 // EDITING
 //   - Add/remove/reword freely. Keep each `principle` to one tight sentence.

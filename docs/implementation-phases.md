@@ -166,7 +166,7 @@ Deliverable:
 
 Current status:
 
-- Accept, dismiss, evaluate, pause, end, and delete controls are available.
+- Pause, end, and delete controls are available (the earlier accept/dismiss/evaluate controls were removed when the coaching screen was simplified).
 - The UI tracks conversation state and the last user action.
 - Ending a session generates a local review.
 - Accepted suggestions can become follow-ups.

@@ -33,8 +33,6 @@ const state = {
   transcript: [],
   liveTranscript: "Start a session, allow microphone access, then speak. Live words show here.",
   followUps: [],
-  acceptedSuggestions: [],
-  dismissedSuggestions: [],
   review: "End a session to generate a local review.",
   lastAction: "None",
   lastSuggestion: "Nothing, Bud is asleep. Start a session to wake him up.",
@@ -413,8 +411,6 @@ function startSession(event) {
   state.transcript = [];
   state.liveTranscript = "Listening for your objective. Say it out loud now.";
   state.followUps = [];
-  state.acceptedSuggestions = [];
-  state.dismissedSuggestions = [];
   state.review = "Session in progress. End the session to generate a local review.";
   state.lastAction = "Session started";
   state.currentSuggestion = "";
@@ -941,46 +937,6 @@ function appendTurnLines(segments, turnOrder) {
   return lines;
 }
 
-function findDuplicateStreamingLine(segment) {
-  const textKey = normalizeTranscriptFingerprint(segment.text);
-  if (!textKey) return null;
-  const now = performance.now();
-  state.streamingFinalHistory = state.streamingFinalHistory.filter((entry) => now - entry.seenAt < 20_000);
-
-  return state.streamingFinalHistory.find((entry) => {
-    if (entry.textKey !== textKey) return false;
-    if (Number.isFinite(segment.start) && Number.isFinite(segment.end) && Number.isFinite(entry.start) && Number.isFinite(entry.end)) {
-      return rangesOverlap(segment.start, segment.end, entry.start, entry.end, 0.8);
-    }
-    return now - entry.seenAt < 4_000;
-  }) || null;
-}
-
-function rememberStreamingFinal(segment, line) {
-  state.streamingFinalHistory.push({
-    textKey: normalizeTranscriptFingerprint(segment.text),
-    start: Number.isFinite(segment.start) ? segment.start : null,
-    end: Number.isFinite(segment.end) ? segment.end : null,
-    speaker: line.speaker,
-    cluster: line.cluster,
-    line,
-    seenAt: performance.now()
-  });
-  state.streamingFinalHistory = state.streamingFinalHistory.slice(-24);
-}
-
-function normalizeTranscriptFingerprint(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function rangesOverlap(startA, endA, startB, endB, tolerance = 0) {
-  return Math.max(startA, startB) <= Math.min(endA, endB) + tolerance;
-}
-
 // A short reply usually comes from the other person than whoever just held the
 // floor. If we have no context yet, default to Me (the user speaks first).
 function guessShortTurnSpeaker() {
@@ -1119,42 +1075,6 @@ function applyCoachPayload(payload, notice = "") {
   state.lastAction = payload.shouldChimeIn === false ? "Coach stayed quiet" : "Coach suggested a move";
   addFollowUp(payload.followUp);
   speakSuggestionIfNeeded({ ...payload, suggestion });
-}
-
-function createLocalCoachPayload(line) {
-  const speaker = normalizeSpeaker(line.speaker);
-  const text = String(line.text || "").toLowerCase();
-
-  if (/\b(no|can't|cannot|won't|not|never|problem|concern|issue|but|however|too much|too expensive|busy)\b/.test(text)) {
-    return {
-      phase: "Reframe",
-      state: "Objection",
-      shouldChimeIn: true,
-      suggestion: "Label the concern, then ask what condition would make progress possible.",
-      followUp: `Tie the next question back to: ${state.goal || "your objective"}`,
-      lens: "Never Split the Difference"
-    };
-  }
-
-  if (speaker === "them") {
-    return {
-      phase: "Guiding",
-      state: "Ask",
-      shouldChimeIn: true,
-      suggestion: "Ask one calm question that connects their last point to your objective.",
-      followUp: `Objective: ${state.goal || "move the conversation forward"}`,
-      lens: "Never Split the Difference"
-    };
-  }
-
-  return {
-    phase: "Listening",
-    state: "Listen",
-    shouldChimeIn: false,
-    suggestion: "Pause and listen for their real constraint before pushing the objective further.",
-    followUp: null,
-    lens: "Deep Work"
-  };
 }
 
 function speakSuggestionIfNeeded(payload) {
@@ -1422,8 +1342,6 @@ async function requestReview(fallback) {
         partner: state.partner,
         goal: state.goal,
         transcript: state.transcript,
-        accepted: state.acceptedSuggestions.map((s) => s.text),
-        dismissed: state.dismissedSuggestions.map((s) => s.text),
         followUps: state.followUps,
         model: state.coachModel
       })
@@ -1457,20 +1375,13 @@ function formatReview(data) {
 
 function generateLocalReview() {
   const lines = state.transcript.filter((line) => !line.codeword).length;
-  const accepted = state.acceptedSuggestions.length;
-  const dismissed = state.dismissedSuggestions.length;
   const followUps = state.followUps.length;
 
   return [
     `Objective: ${state.goal}`,
     `Partner: ${state.partner}`,
     `Transcript lines: ${lines}`,
-    `Accepted suggestions: ${accepted}`,
-    `Dismissed suggestions: ${dismissed}`,
-    `Follow-ups captured: ${followUps}`,
-    accepted > 0
-      ? `Most recent accepted move: ${state.acceptedSuggestions[accepted - 1].text}`
-      : "No suggestions were accepted in this session."
+    `Follow-ups captured: ${followUps}`
   ].join("\n");
 }
 
@@ -1495,8 +1406,6 @@ function deleteSessionData() {
   state.transcript = [];
   state.liveTranscript = "Local session data deleted.";
   state.followUps = [];
-  state.acceptedSuggestions = [];
-  state.dismissedSuggestions = [];
   state.review = "Local session data deleted.";
   state.lastAction = "Deleted";
   state.lastSuggestion = "Local session data deleted. Set a new objective to begin.";

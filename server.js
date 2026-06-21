@@ -439,7 +439,7 @@ app.post("/api/review", async (req, res) => {
     return;
   }
 
-  const { partner, goal, transcript, accepted, dismissed, followUps } = req.body || {};
+  const { partner, goal, transcript, followUps } = req.body || {};
   const coachModel = resolveCoachModel(req.body?.model);
   // A review runs once at session end and isn't latency-sensitive, so let it
   // think harder than the live coach (which defaults to "minimal") for depth.
@@ -473,8 +473,6 @@ app.post("/api/review", async (req, res) => {
   const userPrompt = [
     `Conversation partner: ${partner || "unknown"}`,
     `Your objective: ${goal || "(no explicit objective was set)"}`,
-    `Suggestions you accepted: ${Array.isArray(accepted) && accepted.length ? accepted.join(" | ") : "(none)"}`,
-    `Suggestions you dismissed: ${Array.isArray(dismissed) && dismissed.length ? dismissed.join(" | ") : "(none)"}`,
     `Follow-ups captured: ${Array.isArray(followUps) && followUps.length ? followUps.join(" | ") : "(none)"}`,
     "Full transcript (Me = you):",
     conversation,

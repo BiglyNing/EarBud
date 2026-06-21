@@ -37,7 +37,7 @@ This roadmap reflects the pivot to a local-first conversation-objective coach. F
 
 ## Phase 5: Conversation Coaching MVP
 
-- Add controls to accept, dismiss, or regenerate a suggestion. Status: complete.
+- Add controls to accept, dismiss, or regenerate a suggestion. Status: removed — these controls were dropped when the coaching screen was simplified; suggestions now surface automatically.
 - Track conversation state across the session. Status: complete.
 - Generate a post-conversation review. Status: complete in local summary form.
 - Turn agreed next steps into follow-ups. Status: complete.
