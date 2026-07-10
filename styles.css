@@ -38,12 +38,36 @@
   --sage: var(--forest);
   --sage-deep: #2f5a25;
 
-  --font-display: "Bricolage Grotesque", "Hanken Grotesk", ui-sans-serif, sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+  --font-hand: "Caveat", "Bradley Hand", "Segoe Script", cursive;
 
-  --shadow: 5px 6px 0 rgba(33, 28, 24, 0.10);
-  --shadow-sm: 3px 3px 0 rgba(33, 28, 24, 0.10);
+  /* soft ink-wash shadows — the old crisp 0-blur offsets read as vector
+     stickers; paper casts a diffuse shadow, not a hard duplicate edge */
+  --shadow: 3px 5px 12px rgba(33, 28, 24, 0.14);
+  --shadow-sm: 2px 3px 7px rgba(33, 28, 24, 0.12);
+
+  /* ---- Hand-drawn geometry ----
+     Nothing drawn by hand has four matching corners. Each variant pairs
+     tight corners with loose ones (and different horizontal vs vertical
+     radii, via the `/`) so every box closes a little imperfectly. Rotate
+     the variants across neighbouring elements so no two boxes repeat. */
+  --hand-box-a: 26px 9px 22px 11px / 11px 24px 9px 26px;
+  --hand-box-b: 9px 26px 11px 22px / 24px 9px 26px 11px;
+  --hand-box-c: 20px 13px 28px 8px / 9px 25px 10px 22px;
+  --hand-col: 34px 10px 28px 12px / 14px 30px 11px 34px;
+
+  /* smaller-amplitude wobble for controls, which are short enough that
+     the box radii above would clamp into a lopsided pill */
+  --hand-ctl-a: 16px 6px 13px 8px / 8px 13px 6px 16px;
+  --hand-ctl-b: 6px 16px 8px 13px / 13px 6px 16px 8px;
+
+  /* a pen doesn't hold one weight around a shape */
+  --ink-uneven: 2.4px 1.7px 2.1px 2.7px;
+
+  /* a circle drawn freehand never quite meets itself */
+  --hand-circle: 49% 51% 48% 52% / 52% 48% 51% 49%;
 }
 
 * { box-sizing: border-box; }
@@ -275,7 +299,9 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   flex: 1 1 auto;
   min-height: 200px;
   display: flex;
-  align-items: center;
+  /* bottom-align so a smaller Bud still lands his feet on the stage floor,
+     keeping the bubble tucked under them (the SVG is xMidYMax-anchored) */
+  align-items: flex-end;
   justify-content: center;
   border-radius: 16px;
 }
@@ -316,8 +342,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   z-index: 1;
   display: block;
   width: auto;
-  height: 100%;
-  max-height: 100%;
+  height: 88%;
+  max-height: 88%;
   max-width: 100%;
   transform-origin: center bottom;
   animation: budBob 4.5s ease-in-out infinite;
@@ -996,8 +1022,8 @@ input:focus, select:focus, textarea:focus {
 .books {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  height: 176px;
+  gap: 5px;
+  height: 232px;
   padding-left: 2px;
   overflow: visible;
 }
@@ -1006,8 +1032,8 @@ input:focus, select:focus, textarea:focus {
 .book {
   position: relative;
   flex: 1 1 auto;
-  min-width: 22px;
-  max-width: 44px;
+  min-width: 26px;
+  max-width: 54px;
   height: 92%;
   border-radius: 3px 3px 1px 1px;
   border: 1.5px solid rgba(0, 0, 0, 0.42);
@@ -1065,8 +1091,8 @@ input:focus, select:focus, textarea:focus {
 
 /* Pokeball: two-tone circle + center button */
 .object--pokeball {
-  width: 58px;
-  height: 58px;
+  width: 74px;
+  height: 74px;
   border-radius: 50%;
   border: 3px solid #1c1c1c;
   background: linear-gradient(180deg, #df584a 0 47%, #1c1c1c 47% 53%, #f3ece0 53% 100%);
@@ -1077,79 +1103,79 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 18px;
-  height: 18px;
+  width: 23px;
+  height: 23px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #f3ece0;
-  border: 4px solid #1c1c1c;
+  border: 5px solid #1c1c1c;
 }
 
 /* Potted plant: pot + leafy cluster (3 ellipses) */
-.object--plant { width: 60px; height: 84px; }
+.object--plant { width: 77px; height: 108px; }
 .object--plant::before {
   content: "";
   position: absolute;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 44px;
-  height: 34px;
-  border-radius: 4px 4px 9px 9px;
+  width: 56px;
+  height: 44px;
+  border-radius: 5px 5px 11px 11px;
   background: linear-gradient(180deg, #c87a4a, #a55f37);
   border: 2px solid #7d4423;
 }
 .object--plant::after {
   content: "";
   position: absolute;
-  bottom: 25px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  width: 54px;
-  height: 57px;
+  width: 69px;
+  height: 73px;
   background:
-    radial-gradient(18px 28px at 50% 58%, #4f8a3a 0 72%, transparent 74%),
-    radial-gradient(15px 25px at 26% 74%, #3f7730 0 72%, transparent 74%),
-    radial-gradient(15px 25px at 74% 74%, #3f7730 0 72%, transparent 74%);
+    radial-gradient(23px 36px at 50% 58%, #4f8a3a 0 72%, transparent 74%),
+    radial-gradient(19px 32px at 26% 74%, #3f7730 0 72%, transparent 74%),
+    radial-gradient(19px 32px at 74% 74%, #3f7730 0 72%, transparent 74%);
 }
 
 /* Stack of three horizontal books */
-.object--stack { width: 74px; height: 50px; }
+.object--stack { width: 95px; height: 64px; }
 .object--stack i {
   position: absolute;
-  height: 15px;
+  height: 19px;
   border-radius: 3px;
   border: 2px solid rgba(0, 0, 0, 0.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
-.object--stack i:nth-child(1) { bottom: 0; left: 0; width: 74px; background: #b06a4f; }
-.object--stack i:nth-child(2) { bottom: 13px; left: 5px; width: 64px; background: #7c9a5a; }
-.object--stack i:nth-child(3) { bottom: 26px; left: 2px; width: 55px; background: #c9a24a; }
+.object--stack i:nth-child(1) { bottom: 0; left: 0; width: 95px; background: #b06a4f; }
+.object--stack i:nth-child(2) { bottom: 17px; left: 6px; width: 82px; background: #7c9a5a; }
+.object--stack i:nth-child(3) { bottom: 34px; left: 3px; width: 70px; background: #c9a24a; }
 
 /* Mug: solid rounded body + simple C-handle.
    Flat fill, one corner radius, one stroke colour — trivial to redraw. */
-.object--mug { width: 54px; height: 44px; }
+.object--mug { width: 69px; height: 56px; }
 .object--mug::before {
   content: "";
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 37px;
-  height: 40px;
-  border-radius: 6px;
+  width: 47px;
+  height: 51px;
+  border-radius: 7px;
   background: #6f9e98;
   border: 2px solid #3c5754;
 }
 .object--mug::after {
   content: "";
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 0;
-  width: 20px;
-  height: 23px;
-  border: 5px solid #3c5754;
+  width: 25px;
+  height: 29px;
+  border: 6px solid #3c5754;
   border-left: none;
-  border-radius: 0 13px 13px 0;
+  border-radius: 0 16px 16px 0;
 }
 
 /* =====================================================================
@@ -1206,4 +1232,787 @@ input:focus, select:focus, textarea:focus {
 @media (prefers-reduced-motion: reduce) {
   .bud--sleeping,
   .bud-zzz span { animation: none; }
+}
+
+/* =====================================================================
+   Hand-made finish — field-guide marginalia over the printed system.
+   The bones are already illustrated (owl, wood shelves, paper grain);
+   these touches pull the *chrome* the same direction so it stops
+   reading as a generated design system: handwritten labels instead of
+   tracked-uppercase chips, a scrawled tagline, an inked underline, and
+   a couple of "taped-in note" details. Additive on purpose — easy to
+   dial back a rule at a time.
+   ===================================================================== */
+
+/* The tiny UPPERCASE·TRACKED labels are the loudest "design system"
+   tell; rewritten as handwritten margin notes they read as a person's
+   annotations. (Transcript speaker tags stay mono on purpose — a real
+   log should look typed, and the contrast sells the handwriting.) */
+.meta-label {
+  font-family: var(--font-hand);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* "Bud says" becomes a handwritten caption over his speech bubble,
+   not a tracked eyebrow with a dash */
+#coach-eyebrow {
+  font-family: var(--font-hand);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: var(--clay-deep);
+}
+#coach-eyebrow::before { display: none; }
+
+/* the tagline reads like a note scrawled in the margin above Bud */
+.topbar-tagline {
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--clay-deep);
+  transform: rotate(-1.4deg);
+}
+
+/* an inked, hand-ruled underline under the wordmark */
+.brandmark-word {
+  padding-bottom: 5px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='9' viewBox='0 0 120 9'%3E%3Cpath d='M2 5 Q 18 1 38 4 T 76 4 T 118 3' fill='none' stroke='%23A46650' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") left bottom / 100% 7px no-repeat;
+}
+
+/* the brand chip sits slightly askew, like a pinned tag */
+.brandmark-tag { transform: rotate(-2deg); }
+
+/* The objective is a field note taped into the setup shelf. ::before is
+   spent on its roughened ring (see the sketchbook pass below), so both
+   tape strips ride on ::after as two background images on one strip
+   laid across the note's top edge. */
+.objective-display {
+  position: relative;
+  transform: rotate(-0.5deg);
+}
+.objective-display::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='24' viewBox='0 0 56 24'%3E%3Crect x='4' y='5' width='48' height='14' fill='%23D6C298' fill-opacity='0.58' stroke='%23967846' stroke-opacity='0.3' stroke-width='1' transform='rotate(-6 28 12)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='24' viewBox='0 0 56 24'%3E%3Crect x='4' y='5' width='48' height='14' fill='%23D6C298' fill-opacity='0.58' stroke='%23967846' stroke-opacity='0.3' stroke-width='1' transform='rotate(5 28 12)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left 10px top, right 10px top;
+}
+.objective-display::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1.7px solid rgba(164, 102, 80, 0.85);
+  border-radius: inherit;
+  filter: url(#roughen);
+  pointer-events: none;
+}
+
+/* footer signed in Bud's hand */
+.foot-sign {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--clay-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-tagline,
+  .brandmark-tag,
+  .objective-display { transform: none; }
+}
+
+/* =====================================================================
+   Sketchbook pass — drawn geometry instead of vector geometry.
+   The tell of a machine-made UI is that every shape is a perfect
+   rounded rectangle with an identical crisp shadow. Three moves fix it:
+     1. irregular corner radii, so no corner matches its neighbour;
+     2. outlines drawn as roughened *rings* (a pseudo-element pushed off
+        its true path by an SVG displacement map) rather than crisp CSS
+        borders — this makes edges wobble along their length, which
+        corner-radius tricks alone cannot do. Text never sits inside a
+        filtered element, so type stays perfectly sharp;
+     3. line weight varies around a shape and by importance, the way a
+        pen's would.
+   ===================================================================== */
+
+.sketch-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---- 1. Boxes that hand their outline to a roughened ring ----
+   The real border goes transparent (kept, so box-sizing is unchanged)
+   and ::after redraws it. Anything that scrolls is excluded — an
+   absolutely-positioned ring inside a scroll container would slide
+   away from its box. */
+.suggestion-box,
+.live-transcript,
+.coach-meta > div,
+.transcript-list li,
+.more,
+.shelf-level > .play-steps,
+.shelf-level > .goal-form,
+.shelf-level > .live-transcript-wrap,
+.shelf-level > .more {
+  position: relative;
+  border-color: transparent;
+}
+
+.suggestion-box::after,
+.live-transcript::after,
+.coach-meta > div::after,
+.transcript-list li::after,
+.more::after,
+.shelf-level > .play-steps::after,
+.shelf-level > .goal-form::after,
+.shelf-level > .live-transcript-wrap::after,
+.shelf-level > .more::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: var(--ring-w, 1.6px) solid var(--ring-c, rgba(33, 28, 24, 0.78));
+  border-radius: inherit;
+  filter: url(#roughen);
+  pointer-events: none;
+}
+
+/* the cream placards are pinned to wood, so their ink is the shelf's */
+.shelf-level > .play-steps::after,
+.shelf-level > .goal-form::after,
+.shelf-level > .live-transcript-wrap::after,
+.shelf-level > .more::after {
+  --ring-c: rgba(63, 38, 22, 0.85);
+  --ring-w: 1.7px;
+}
+
+/* ---- Corner wobble, rotated across neighbours so nothing repeats ---- */
+.col-coach {
+  border-width: var(--ink-uneven);
+  border-radius: var(--hand-col);
+}
+
+.suggestion-box { border-radius: var(--hand-box-c); }
+.live-transcript { border-radius: var(--hand-box-b); }
+.objective-display {
+  border-radius: var(--hand-box-c);
+  border-width: 1.8px 1.3px 1.6px 2px;
+}
+.more { border-radius: var(--hand-ctl-a); }
+
+.coach-meta > div:nth-child(1) { border-radius: var(--hand-box-a); transform: rotate(-0.5deg); }
+.coach-meta > div:nth-child(2) { border-radius: var(--hand-box-b); transform: rotate(0.4deg); }
+.coach-meta > div:nth-child(3) { border-radius: var(--hand-box-c); transform: rotate(-0.3deg); }
+
+/* transcript lines alternate their wobble so a long list never falls
+   into a visible repeat; lighter ink and a cheaper filter, since there
+   can be dozens of them on screen */
+.transcript-list li:nth-child(odd) { border-radius: var(--hand-box-a); transform: rotate(-0.3deg); }
+.transcript-list li:nth-child(even) { border-radius: var(--hand-box-b); transform: rotate(0.35deg); }
+.transcript-list li::after {
+  --ring-w: 1.3px;
+  --ring-c: rgba(33, 28, 24, 0.55);
+  filter: url(#roughen-lite);
+}
+
+.shelf-level > .play-steps { border-radius: var(--hand-box-a); }
+.shelf-level > .goal-form { border-radius: var(--hand-box-b); }
+.shelf-level > .live-transcript-wrap { border-radius: var(--hand-box-c); }
+.shelf-level > .transcript-list { border-radius: var(--hand-box-a); }
+.shelf-level > .more { border-radius: var(--hand-box-b); }
+
+/* even the shelf carcass is not perfectly square-cut */
+.shelf { border-radius: 6px 3px 5px 4px / 4px 5px 3px 6px; }
+
+/* ---- Controls keep real borders (focus rings and state colours live
+   there) but take the wobble in their corners and pen pressure ---- */
+.primary-action {
+  position: relative;
+  border-radius: var(--hand-ctl-b);
+  border-width: 2.2px 1.6px 2px 2.4px;
+}
+
+/* traced twice, and the second pass missed */
+.primary-action::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 1.5px solid rgba(33, 28, 24, 0.42);
+  border-radius: var(--hand-ctl-a);
+  transform: rotate(-0.8deg);
+  filter: url(#roughen);
+  pointer-events: none;
+}
+
+.control-button {
+  border-radius: var(--hand-ctl-a);
+  border-width: 1.6px 1.2px 1.5px 1.8px;
+}
+.secondary-action {
+  border-radius: var(--hand-ctl-b);
+  border-width: 1.5px 1.2px 1.6px 1.7px;
+}
+.voice-preview-btn { border-radius: var(--hand-ctl-a); }
+
+input, textarea { border-radius: var(--hand-ctl-a); }
+select { border-radius: var(--hand-ctl-b); }
+
+/* soft shadows on hover/press too — no hard duplicate edge */
+.primary-action:hover { box-shadow: 4px 7px 14px rgba(33, 28, 24, 0.22); }
+.primary-action:active { box-shadow: 1px 2px 5px rgba(33, 28, 24, 0.18); }
+
+/* ---- Freehand circles ---- */
+.play-steps span,
+.status-dot::before { border-radius: var(--hand-circle); }
+
+.brandmark-icon {
+  border-radius: var(--hand-ctl-a);
+  transform: rotate(-1.5deg);
+}
+
+.device-pill { transform: rotate(-0.5deg); }
+.status-dot { transform: rotate(0.4deg); }
+
+/* ---- 2. Wobbling ink rules where straight borders used to be ---- */
+.topbar {
+  border-bottom: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='7' viewBox='0 0 240 7'%3E%3Cpath d='M1 3.6C30 1.6 50 5.6 80 3.6 110 1.7 130 1.6 160 4 190 6.2 210 5.4 239 3.6' fill='none' stroke='%23211C18' stroke-opacity='0.34' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+.footbar {
+  border-top: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='7' viewBox='0 0 240 7'%3E%3Cpath d='M1 3.6C34 5.8 54 1.8 84 3.8 114 5.7 134 5.6 164 3 194 0.6 214 1.6 239 3.6' fill='none' stroke='%23211C18' stroke-opacity='0.3' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: left top;
+}
+
+.more[open] > summary {
+  border-bottom: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='6' viewBox='0 0 180 6'%3E%3Cpath d='M1 3.2C26 1.4 42 4.8 66 3.2 90 1.6 106 1.5 130 3.4 154 5.2 166 4.4 179 3' fill='none' stroke='%23211C18' stroke-opacity='0.28' stroke-width='1.5' stroke-linecap='round' stroke-dasharray='9 5'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+/* the dropdown caret, drawn rather than plotted */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='11' viewBox='0 0 16 11'%3E%3Cpath d='M1.6 2.4C3.6 4.6 5.8 7.2 8 9.1 10.1 7.1 12.2 4.4 14.4 2.2' fill='none' stroke='%23211C18' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* ---- 3. Bud's bubble: an inked tail, and a rougher outline ---- */
+
+/* the two stacked CSS triangles were perfectly geometric; this is one
+   drawn tail whose sides bow. fill matches --field so the base seam
+   vanishes under the bubble's own ring. Its reach above the bubble is
+   kept under the column's 12px gap or it climbs into "Bud says". */
+.suggestion-box::before {
+  bottom: 100%;
+  left: 50%;
+  width: 32px;
+  height: 16px;
+  margin-bottom: -3px;
+  border: 0;
+  transform: translateX(-50%) rotate(-1deg);
+  filter: url(#roughen-lite);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='20' viewBox='0 0 36 20'%3E%3Cpath d='M3 18.5C7.5 13 12 6.5 17.5 1.5 22.5 6.8 27.5 12.6 33 18.5' fill='%23FBF7EE' stroke='%23211C18' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* reclaim ::after from the old inner triangle to be the bubble's ring */
+.suggestion-box::after {
+  --ring-w: 2.4px;
+  --ring-c: rgba(33, 28, 24, 0.9);
+  inset: 0;
+  transform: none;
+  margin-bottom: 0;
+  filter: url(#roughen-bold);
+}
+
+/* ---- Pencil shading on the taped-in objective note ---- */
+.objective-display {
+  background-color: rgba(164, 102, 80, 0.05);
+  background-image: repeating-linear-gradient(
+    -42deg,
+    rgba(164, 102, 80, 0.13) 0 1.2px,
+    transparent 1.2px 8px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-tagline,
+  .brandmark-tag,
+  .brandmark-icon,
+  .device-pill,
+  .status-dot,
+  .objective-display,
+  .coach-meta > div,
+  .transcript-list li,
+  .primary-action::after { transform: none; }
+  .suggestion-box::before { transform: translateX(-50%); }
+}
+
+/* ---- Rings for the remaining crisp shapes: the note, the pills and
+   the buttons. State colour rides on the ring, so each element's real
+   border is held transparent (its width is kept, for box-sizing).
+   Inputs and selects are deliberately left with real borders: replaced
+   elements can't carry pseudo-elements, and their focus ring lives on
+   the border colour. ---- */
+.objective-display { border-color: transparent; }
+
+.brandmark-tag,
+.device-pill,
+.status-dot,
+.primary-action,
+.control-button,
+.secondary-action { position: relative; }
+
+.brandmark-tag,
+.device-pill,
+.status-dot,
+.status-dot.active,
+.primary-action,
+.control-button,
+.control-button.active,
+.secondary-action,
+.control-button:hover:not(:disabled),
+.secondary-action:hover:not(:disabled),
+.control-button.danger:hover:not(:disabled) { border-color: transparent; }
+
+.brandmark-tag::after,
+.device-pill::after,
+.status-dot::after,
+.primary-action::before,
+.control-button::after,
+.secondary-action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: inherit;
+  filter: url(#roughen-lite);
+  pointer-events: none;
+}
+
+.brandmark-tag::after { border-color: var(--ink); }
+.primary-action::before {
+  border-width: 2.2px;
+  border-color: var(--ink);
+  filter: url(#roughen);
+}
+
+/* state cues move from the border onto the ring */
+.status-dot.active::after { border-color: var(--forest); }
+.control-button:hover:not(:disabled)::after,
+.secondary-action:hover:not(:disabled)::after { border-color: var(--ink); }
+.control-button.active::after { border-color: var(--forest); }
+.control-button.danger:hover:not(:disabled)::after { border-color: var(--brick); }
+
+/* =====================================================================
+   Composition pass — breaking the symmetry.
+   Wobbly borders can't disguise a layout of evenly divided thirds; even
+   division is the safe default a generator reaches for. So: Bud steps
+   off centre and stands on his own speech bubble, the two three-up rows
+   stop being equal thirds, and the bookshelf runs off its frame.
+   ===================================================================== */
+
+/* ---- Bud stands on his bubble, left of centre ---- */
+
+/* Bud paints over the bubble; the bubble tucks up beneath his feet.
+   The pull has to clear the column's 12px gap, so the feet break the
+   bubble's top edge by (52 - 12) = 40px. That figure is only reliable
+   because the SVG is bottom-anchored (see the viewBox note in the
+   markup) — otherwise letterboxing floats the feet off the stage floor
+   by an amount that changes with the viewport. .bud-stage is flex:1, so
+   it reclaims the 52px and Bud grows rather than the layout collapsing. */
+.bud-stage { z-index: 2; }
+.bubble-wrap {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin-top: -40px;
+}
+
+/* the halo follows Bud down instead of floating over his head */
+.bud-stage::before { inset: 20% 10% 2%; }
+
+/* the stack rests on the bubble's top edge, left of the tail. In px,
+   not %, so it tracks the overlap rather than the stage height. */
+.bud-books { left: 4%; right: auto; bottom: 29px; }
+
+/* the caption is pinned above the bubble, clear of the feet and on the
+   opposite side from the books */
+#coach-eyebrow {
+  position: absolute;
+  bottom: 100%;
+  right: 8%;
+  margin: 0 0 2px;
+  transform: rotate(-3deg);
+  z-index: 3;
+}
+
+/* Bud touches the bubble himself now, so the tail is redundant here and
+   reads as a stray triangle floating beside him. It comes back in the
+   stacked layout, where the bubble sits detached below him. */
+.suggestion-box::before { display: none; }
+
+/* the feet dip past the top edge, so the bubble opens its top padding
+   to keep them off the text */
+.suggestion-box { padding-top: 30px; }
+
+/* ---- The three-up rows stop being equal thirds ---- */
+
+/* Pause is the one you actually reach for; End and Delete are not its
+   equals. Scoped to the coach column so .voice-actions keeps its 2-up. */
+.col-coach > .control-grid {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* Lens (which book Bud drew the tactic from) is the interesting one --
+   give it the room and the type size to say so */
+.coach-meta {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 1.05fr);
+}
+.coach-meta > div:nth-child(2) strong { font-size: 1.32rem; }
+
+/* ---- The bookshelf runs off its frame ---- */
+
+/* Cropped harder on the left than the right, so the shelf reads as
+   continuing past the column rather than being neatly centred in it.
+   The clip lives on .bookcase: putting it on .shelf-body (overflow-y:
+   auto) would compute overflow-x to auto and add a scrollbar. */
+.bookcase { overflow: hidden; }
+.book-shelf { padding-left: 0; padding-right: 0; }
+.books { margin: 0 -8px 0 -26px; padding-left: 0; }
+
+/* ---- Stacked layout: the overlap and offsets only make sense in the
+   three-column composition, so unwind them ---- */
+@media (max-width: 1040px), (max-height: 600px) {
+  .bubble-wrap { margin-top: 0; }
+  .bud { margin-right: 0; }
+  .bud-stage::before { inset: 6% 10%; }
+  .bud-books { left: 17%; right: auto; bottom: 8%; }
+  .bud-zzz { right: 31%; }
+  /* back into flow above the bubble. It's inline-flex, so auto margins
+     won't centre it — justify-content does. */
+  #coach-eyebrow {
+    position: static;
+    display: flex;
+    justify-content: center;
+    margin: 0 0 6px;
+  }
+  .suggestion-box::before { display: block; left: 50%; }
+  .suggestion-box { padding-top: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #coach-eyebrow { transform: none; }
+}
+
+/* =====================================================================
+   Finish pass — typeface, wood, the jotted list, and one artifact.
+   ===================================================================== */
+
+/* ---- 1. The display face ----
+   Fraunces is a variable font with a WONK axis: at WONK 1 the designer's
+   deliberately off-kilter alternates swap in. SOFT rounds the terminals.
+   Turned up hardest on the wordmark, eased off where we need to read. */
+.brandmark-word {
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 96;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transform: rotate(-0.8deg);
+  display: inline-block;
+  /* Fraunces sits on a deeper descender than Bricolage did, which left
+     the drawn underline floating clear of the baseline */
+  line-height: 1;
+  padding-bottom: 1px;
+  background-size: 100% 6px;
+}
+
+.suggestion-box,
+.carved {
+  font-variation-settings: "SOFT" 80, "WONK" 1, "opsz" 72;
+}
+
+/* body-sized display text: wonk off, it gets fussy below ~18px */
+.coach-meta strong,
+.more > summary,
+.primary-action,
+.secondary-action,
+.control-button,
+.book {
+  font-variation-settings: "SOFT" 60, "WONK" 0, "opsz" 24;
+}
+
+/* Fraunces runs small and its caps are shorter than Bricolage's */
+.carved { font-size: 1.14rem; letter-spacing: 0.14em; }
+.brandmark-word { font-size: 1.82rem; }
+
+/* ---- 2. Wood that was drawn, not gradient-generated ----
+   The old surface was two repeating-linear-gradients: perfectly even
+   stripes at perfectly even intervals. Real grain wanders. These tiles
+   are wavy strokes at irregular spacing, dark and light mixed. */
+.shelf {
+  position: relative;
+  border-color: transparent;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='200' viewBox='0 0 90 200'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M8 0C5 40 11 70 7 100 3 130 11 165 8 200' stroke='%23000' stroke-opacity='0.10' stroke-width='1.6'/%3E%3Cpath d='M22 0C26 35 19 75 24 110 28 140 19 170 22 200' stroke='%23fff' stroke-opacity='0.08' stroke-width='1.2'/%3E%3Cpath d='M37 0C33 45 40 80 35 120 31 150 40 175 37 200' stroke='%23000' stroke-opacity='0.13' stroke-width='2'/%3E%3Cpath d='M52 0C56 30 49 70 54 105 58 140 49 175 52 200' stroke='%23000' stroke-opacity='0.07' stroke-width='1.3'/%3E%3Cpath d='M67 0C63 40 70 75 65 115 61 145 70 172 67 200' stroke='%23fff' stroke-opacity='0.07' stroke-width='1.1'/%3E%3Cpath d='M81 0C85 35 78 72 83 108 87 142 78 176 81 200' stroke='%23000' stroke-opacity='0.11' stroke-width='1.7'/%3E%3C/g%3E%3C/svg%3E") repeat,
+    linear-gradient(180deg, var(--wood-light), var(--wood) 16%, var(--wood) 84%, var(--wood-dark));
+  /* the old gloss (a bright 2px inset highlight + heavy inner shadow)
+     read as a 3D render; wood is matte */
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.20);
+}
+
+/* the case gets a drawn outline like everything else. inset 2px so the
+   displacement has room to wobble without being clipped by overflow. */
+.shelf::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: 5;
+  border: 2px solid rgba(38, 21, 9, 0.9);
+  border-radius: inherit;
+  filter: url(#roughen);
+  pointer-events: none;
+}
+
+/* crown rail: grain runs along the plank, so this tile is horizontal */
+.shelf-crown {
+  position: relative;
+  border-bottom: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 9C40 6 70 12 100 8 130 4 165 11 200 9' stroke='%23000' stroke-opacity='0.10' stroke-width='1.5'/%3E%3Cpath d='M0 22C35 26 75 19 105 24 140 28 170 21 200 22' stroke='%23fff' stroke-opacity='0.07' stroke-width='1.1'/%3E%3Cpath d='M0 36C45 32 70 40 110 35 145 31 172 39 200 36' stroke='%23000' stroke-opacity='0.12' stroke-width='1.8'/%3E%3Cpath d='M0 50C38 54 72 47 108 52 142 56 170 48 200 50' stroke='%23000' stroke-opacity='0.08' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E") repeat-x center,
+    linear-gradient(180deg, var(--wood-light), var(--wood));
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.20);
+}
+
+/* the crown's bottom edge, drawn rather than ruled */
+.shelf-crown::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='4' viewBox='0 0 200 4'%3E%3Cpath d='M0 2.2C34 1 62 3.2 96 2 130 0.8 160 3 200 2' fill='none' stroke='%23281509' stroke-opacity='0.85' stroke-width='2.4'/%3E%3C/svg%3E") repeat-x bottom;
+}
+
+/* divider boards lose the hard white rule along the top */
+.shelf-level::after {
+  border-top: none;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.26);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='3' viewBox='0 0 200 3'%3E%3Cpath d='M0 1.6C36 0.6 64 2.4 98 1.4 132 0.4 162 2.2 200 1.4' fill='none' stroke='%23fff' stroke-opacity='0.16' stroke-width='1.4'/%3E%3C/svg%3E") repeat-x top,
+    linear-gradient(180deg, var(--wood-light), var(--wood) 45%, var(--wood-dark));
+}
+
+/* ---- 3. The 1-2-3 stepper becomes a jotted list ----
+   Drawn ticks instead of numbered circles, and each line sits at its own
+   indent so the left edge never rules up into a column. */
+.play-steps li {
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--ink);
+}
+
+.play-steps li::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cg fill='none' stroke='%23A46650' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9.4C6 8.5 10 10 14.6 9.1'/%3E%3Cpath d='M10.4 5.2C11.8 6.6 13.3 8.2 15 9.1 13.3 10.2 11.8 11.7 10.6 13.2'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  filter: url(#roughen-lite);
+}
+
+.play-steps li:nth-child(1) { margin-left: 0; transform: rotate(-0.4deg); }
+.play-steps li:nth-child(2) { margin-left: 15px; transform: rotate(0.3deg); }
+.play-steps li:nth-child(3) { margin-left: 6px; transform: rotate(-0.2deg); }
+
+/* ---- 4. One specific artifact: somebody set a mug down here ---- */
+.coffee-ring {
+  position: absolute;
+  top: 6px;
+  right: 96px;
+  width: 68px;
+  height: 46px;
+  z-index: 4;
+  border: 6px solid rgba(58, 28, 10, 0.32);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(58, 28, 10, 0.06), transparent);
+  transform: rotate(-10deg);
+  filter: url(#roughen);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* the smear where the mug was dragged off the ring */
+.coffee-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px 12px 13px -6px;
+  border: 3px solid rgba(58, 28, 10, 0.18);
+  border-radius: 50%;
+  filter: url(#roughen-lite);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brandmark-word,
+  .play-steps li,
+  .coffee-ring { transform: none; }
+}
+
+/* =====================================================================
+   Behaviour pass — the shelf, Bud, empty states, and sound cues become
+   part of the app, not just scenery.
+   ===================================================================== */
+
+/* ---- 1. Bud pulls the cited book off the shelf ----
+   .book--pulled (set in JS when a suggestion names a source) lifts the
+   spine clear of the row, tilts it, and lights it gold. The bookcase
+   clips horizontally for the bleed, so we give the shelf enough headroom
+   above the spines for a lifted book to rise into without being cut. */
+.book-shelf { padding-top: 22px; }
+
+.book {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+}
+
+.book--pulled {
+  transform: translateY(-19px) rotate(-3deg) scale(1.04);
+  z-index: 4;
+  color: #fff;
+  /* a cream inner ring separates the spine from the brown shelf (a gold
+     ring would blend into the wood), with a warm bloom outside it */
+  box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.3),
+    inset -3px 0 0 rgba(0, 0, 0, 0.22),
+    0 10px 18px rgba(0, 0, 0, 0.38),
+    0 0 0 2.5px #FBF3DC,
+    0 0 22px 5px rgba(255, 214, 138, 0.85);
+  animation: bookGlow 2.2s ease-in-out infinite;
+}
+
+/* the gold header band brightens on the pulled book too */
+.book--pulled::before { background: #ffe6a8; opacity: 1; height: 3px; }
+
+@keyframes bookGlow {
+  0%, 100% { box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.3),
+    inset -3px 0 0 rgba(0, 0, 0, 0.22),
+    0 10px 18px rgba(0, 0, 0, 0.36),
+    0 0 0 2.5px #FBF3DC,
+    0 0 16px 3px rgba(255, 214, 138, 0.65); }
+  50% { box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.3),
+    inset -3px 0 0 rgba(0, 0, 0, 0.22),
+    0 12px 20px rgba(0, 0, 0, 0.4),
+    0 0 0 2.5px #FBF3DC,
+    0 0 30px 7px rgba(255, 214, 138, 0.95); }
+}
+
+/* ---- 2. Bud reacts: thinking (waiting on the coach) and listening ---- */
+
+/* thinking: a slow contemplative sway, replacing the idle bob */
+.bud--thinking { animation: budThink 3.4s ease-in-out infinite; }
+/* listening: leaning in, a touch more alert than idle */
+.bud--listening { animation: budListen 3s ease-in-out infinite; }
+
+@keyframes budThink {
+  0%, 100% { transform: translateY(0) rotate(-3.5deg); }
+  50% { transform: translateY(-3px) rotate(3.5deg); }
+}
+@keyframes budListen {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  45% { transform: translateY(-5px) rotate(1.5deg); }
+}
+
+/* the thought dots, mirroring how the zzz cluster is revealed */
+.bud-think {
+  position: absolute;
+  top: 14%;
+  right: 29%;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.bud-think i {
+  border-radius: 50%;
+  background: var(--maroon);
+  animation: thinkPulse 1.4s ease-in-out infinite;
+}
+.bud-think i:nth-child(1) { width: 7px; height: 7px; animation-delay: 0s; }
+.bud-think i:nth-child(2) { width: 9px; height: 9px; animation-delay: 0.18s; }
+.bud-think i:nth-child(3) { width: 11px; height: 11px; animation-delay: 0.36s; }
+.bud-stage:has(.bud--thinking) .bud-think { opacity: 1; }
+
+@keyframes thinkPulse {
+  0%, 100% { transform: translateY(0) scale(0.75); opacity: 0.35; }
+  50% { transform: translateY(-4px) scale(1); opacity: 0.95; }
+}
+
+/* ---- 3. Empty transcript: a quill over a blank page, not a void ---- */
+.transcript-list li.transcript-empty {
+  border: none;
+  background: none;
+  box-shadow: none;
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-height: 130px;
+  text-align: center;
+}
+.transcript-list li.transcript-empty::after { display: none; }
+
+.transcript-empty-mark {
+  width: 46px;
+  height: 46px;
+  opacity: 0.72;
+  filter: url(#roughen-lite);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23A46650' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M40 8C26 12 16 23 11 37'/%3E%3Cpath d='M40 8C35 15 28 18 21 19'/%3E%3Cpath d='M34 14C30 19 25 22 19 24'/%3E%3Cpath d='M28 20C25 25 21 28 15 30'/%3E%3Cpath d='M11 37L8 42'/%3E%3Ccircle cx='7.4' cy='42.6' r='1.4' fill='%23A46650' stroke='none'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.transcript-empty-note {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+/* ---- Motion preferences ---- */
+@media (prefers-reduced-motion: reduce) {
+  .book,
+  .book--pulled,
+  .bud--thinking,
+  .bud--listening,
+  .bud-think i { animation: none; transition: none; }
+  /* keep the pulled book legible-as-pulled without the pulse */
+  .book--pulled { transform: translateY(-12px) rotate(-3deg); }
 }

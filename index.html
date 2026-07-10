@@ -4,15 +4,44 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#F5EFE3">
-    <meta name="description" content="EarBud is a real-time conversation coach: live transcription plus an AI strategist that whispers the right move while you talk.">
-    <title>EarBud — Real-time Conversation Coach</title>
+    <meta name="description" content="Meet Bud, the owl in your earpiece. He listens along, does the reading, and whispers your next move — so you can keep the conversation going.">
+    <title>EarBud — the owl in your earpiece</title>
+    <!-- Bud himself in the browser tab, drawn as an inline SVG so there's no
+         asset to ship and it stays crisp at any density. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23F5EFE3'/%3E%3Cpath d='M9 6 l3 4 -5 0 z' fill='%23A46650'/%3E%3Cpath d='M23 6 l-3 4 5 0 z' fill='%23A46650'/%3E%3Ccircle cx='16' cy='18' r='11' fill='%23A46650'/%3E%3Ccircle cx='11.5' cy='16' r='5' fill='%23F5E7E7' stroke='%23211C18' stroke-width='1.7'/%3E%3Ccircle cx='20.5' cy='16' r='5' fill='%23F5E7E7' stroke='%23211C18' stroke-width='1.7'/%3E%3Ccircle cx='11.7' cy='16.4' r='1.9' fill='%23211C18'/%3E%3Ccircle cx='20.3' cy='16.4' r='1.9' fill='%23211C18'/%3E%3Cpath d='M14.4 21 L16 24 L17.6 21 Z' fill='%23E59D6A' stroke='%23211C18' stroke-width='0.9' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@500;600&display=swap">
+    <!-- Fraunces replaces Bricolage Grotesque as the display face. It carries
+         SOFT and WONK axes — WONK swaps in the tilted, off-kilter letterforms
+         the designer drew on purpose — which is about as close to lettering as
+         type gets, and a much better fit for a field guide than a grotesk. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,500..800,0..100,0..1&family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@500;600&display=swap">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <div class="paper-grain" aria-hidden="true"></div>
+
+    <!-- Roughening filters. A fractal-noise displacement map pushes each point
+         of a shape off its true path, so a straight border comes out wobbling
+         like an inked line. These are applied ONLY to border-drawing pseudo-
+         elements (never to a box containing text), which keeps type crisp.
+         Three strengths so not every line is disturbed by the same amount. -->
+    <svg class="sketch-defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="roughen-lite" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.019" numOctaves="3" seed="5" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <filter id="roughen" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="11" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <filter id="roughen-bold" x="-14%" y="-14%" width="128%" height="128%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.017" numOctaves="3" seed="23" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="5.4" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
 
     <div class="stage">
       <header class="topbar">
@@ -40,10 +69,13 @@
           <div class="shelf-crown"><h2 class="carved" id="setup-eyebrow">Setup</h2></div>
           <div class="shelf-body">
             <div class="shelf-level">
+          <!-- still an <ol> (the order matters) but the numbered circles are
+               gone — that stepper is the most generic onboarding pattern there
+               is. Drawn ticks and staggered indents read as a jotted list. -->
           <ol class="play-steps">
-            <li><span>1</span> Say your objective out loud</li>
-            <li><span>2</span> Say your codeword when you want help</li>
-            <li><span>3</span> Get strategic cues live from Bud</li>
+            <li>Say your objective out loud</li>
+            <li>Say your codeword when you want help</li>
+            <li>Get strategic cues live from Bud</li>
           </ol>
             </div>
             <div class="shelf-level shelf-level--fill">
@@ -111,7 +143,11 @@
         <!-- ===== Bud + Coach (centerpiece) ===== -->
         <section class="col col-coach" aria-labelledby="coach-eyebrow">
           <div class="bud-stage">
-            <svg id="bud" class="bud" viewBox="0 0 480 584" fill="none" role="img" aria-label="Bud, the EarBud owl mascot">
+            <!-- viewBox is cropped just below the feet (they end at y=518) and
+                 the drawing is anchored to the bottom of its box, so Bud's feet
+                 always land on the stage's bottom edge no matter how the SVG is
+                 letterboxed. That's what lets the bubble tuck under them. -->
+            <svg id="bud" class="bud" viewBox="0 0 480 524" preserveAspectRatio="xMidYMax meet" fill="none" role="img" aria-label="Bud, the EarBud owl mascot">
               <defs>
                 <clipPath id="budLens">
                   <circle cx="203.5" cy="190.5" r="41"></circle>
@@ -194,11 +230,17 @@
             </svg>
             <div class="bud-books" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="bud-zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
+            <!-- shown while Bud waits on the coach — he's mulling it over -->
+            <div class="bud-think" aria-hidden="true"><i></i><i></i><i></i></div>
           </div>
 
-          <p class="eyebrow centered" id="coach-eyebrow">Bud says</p>
-          <div class="suggestion-box" id="suggestionBox">
-            Set a goal to begin.
+          <!-- wrapped so the bubble can be pulled up under Bud's feet while
+               the caption stays pinned above its top edge -->
+          <div class="bubble-wrap">
+            <p class="eyebrow" id="coach-eyebrow">Bud says</p>
+            <div class="suggestion-box" id="suggestionBox">
+              Set a goal to begin.
+            </div>
           </div>
 
           <div class="control-grid">
@@ -243,7 +285,12 @@
 
         <!-- ===== Transcript ===== -->
         <section class="col col-transcript shelf" aria-labelledby="transcript-eyebrow">
-          <div class="shelf-crown"><h2 class="carved" id="transcript-eyebrow">Transcript</h2></div>
+          <div class="shelf-crown">
+            <h2 class="carved" id="transcript-eyebrow">Transcript</h2>
+            <!-- somebody put a mug down on the shelf. There's one on the
+                 bookcase below; this is where it used to sit. -->
+            <span class="coffee-ring" aria-hidden="true"></span>
+          </div>
           <div class="shelf-body">
             <div class="shelf-level">
           <div class="live-transcript-wrap" aria-live="polite">
@@ -273,6 +320,10 @@
               <label class="toggle-row">
                 <input id="spokenSuggestionsInput" type="checkbox" checked>
                 Spoken suggestions
+              </label>
+              <label class="toggle-row">
+                <input id="soundEffectsInput" type="checkbox">
+                Sound effects
               </label>
               <label>
                 Frequency
@@ -312,7 +363,7 @@
       </main>
 
       <footer class="footbar">
-        <span>EarBud · real-time conversation coach</span>
+        <span class="foot-sign">Field notes, kept by Bud.</span>
         <span>Audio is transcribed live and never saved to disk.</span>
       </footer>
     </div>

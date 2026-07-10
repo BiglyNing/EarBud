@@ -40,6 +40,7 @@ const state = {
   lastLens: "None",
   awaitingObjective: false,
   spokenSuggestions: true,
+  soundEffects: false,
   speechFrequency: "all",
   speechVolume: 0.7,
   speechRate: 0.95,
@@ -101,6 +102,7 @@ const elements = {
   reviewBox: document.querySelector("#reviewBox"),
   followupList: document.querySelector("#followupList"),
   spokenSuggestionsInput: document.querySelector("#spokenSuggestionsInput"),
+  soundEffectsInput: document.querySelector("#soundEffectsInput"),
   speechFrequencyInput: document.querySelector("#speechFrequencyInput"),
   speechVolumeInput: document.querySelector("#speechVolumeInput"),
   speechRateInput: document.querySelector("#speechRateInput"),
@@ -110,6 +112,7 @@ const elements = {
 };
 
 let lastCuedSuggestion = "";
+let wasSleeping = true; // tracks the sleeping->awake edge so Bud hoots once on wake
 
 // Play Bud's "lens glint" once when a fresh suggestion appears. Purely cosmetic
 // and fully guarded, so it never affects coaching if the mascot isn't present.
@@ -120,8 +123,53 @@ function triggerBudCue(suggestion) {
     bud.classList.remove("bud--cue");
     void bud.getBoundingClientRect(); // force reflow so the animation restarts
     bud.classList.add("bud--cue");
+    if (lastCuedSuggestion) playPageTurn(); // skip the very first render's default line
   }
   lastCuedSuggestion = suggestion || "";
+}
+
+// ---- Bud pulls the book he's citing off the shelf ----
+// The coach returns a `lens` naming the source of its tactic (server.js asks
+// for titles like "Never Split the Difference"), and the shelves are built
+// from the same list. So when a lens comes back we find its spine and pull it
+// out — the decoration becomes a readout of where the advice came from.
+
+// Fold titles to a comparable core so "The 48 Laws of Power" (shelf) matches
+// "48 Laws of Power" (coach): drop punctuation, &→and, and a leading "the".
+function normalizeTitle(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\bthe\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+let lastHighlightedLens = null;
+function highlightLensBook(lens) {
+  const spines = document.querySelectorAll(".book[data-book]");
+  if (!spines.length) return;
+
+  const norm = lens && lens !== "None" ? normalizeTitle(lens) : "";
+  if (norm === (lastHighlightedLens || "")) return; // unchanged since last render
+  lastHighlightedLens = norm;
+
+  // pick the spine whose core title is closest in length to the lens among
+  // those that contain (or are contained by) it — avoids a short title like
+  // "Impro" matching everything it's a substring of
+  let match = null;
+  if (norm) {
+    spines.forEach((spine) => {
+      const book = spine.dataset.book;
+      if (!book || !(book === norm || book.includes(norm) || norm.includes(book))) return;
+      if (!match || Math.abs(book.length - norm.length) < Math.abs(match.dataset.book.length - norm.length)) {
+        match = spine;
+      }
+    });
+  }
+
+  spines.forEach((spine) => spine.classList.toggle("book--pulled", spine === match));
 }
 
 // Decorative "lens library" — the books Bud has read, shown as spines on the
@@ -187,7 +235,7 @@ function makeObject(kind) {
 // step back. Each spine gets its own size, so long and short titles both fill.
 function fitSpine(spine) {
   const minPx = 7;
-  const maxPx = 22;
+  const maxPx = 27;
   let size = minPx;
   spine.style.fontSize = `${size}px`;
   while (size < maxPx) {
@@ -232,6 +280,7 @@ function renderLibrary() {
       spine.style.flexBasis = `${layout.widths[idx % layout.widths.length]}px`;
       spine.style.height = `${layout.heights[idx % layout.heights.length]}%`;
       spine.title = book.full;
+      spine.dataset.book = normalizeTitle(book.full);
       spine.textContent = book.spine;
       strip.appendChild(spine);
 
@@ -276,11 +325,23 @@ function render() {
   elements.suggestionBox.textContent = state.lastSuggestion;
   triggerBudCue(state.lastSuggestion);
   if (elements.bud) {
-    elements.bud.classList.toggle("bud--speaking", Boolean(state.speechSpeaking));
-    // Bud sleeps until a session starts; he's also awake any time he's
-    // speaking (e.g. the voice test) so he doesn't talk in his sleep.
-    elements.bud.classList.toggle("bud--sleeping", !state.active && !state.speechSpeaking);
+    // One mood at a time, by precedence. speaking wins (he's talking aloud);
+    // then sleeping when there's no session; then thinking while he waits on
+    // the coach; otherwise he's leaning in, listening. Built to be mutually
+    // exclusive so their animations never stack.
+    const speaking = Boolean(state.speechSpeaking);
+    const sleeping = !state.active && !speaking;
+    const thinking = state.active && state.requestingAgent && !speaking;
+    const listening = state.active && !state.paused && !speaking && !thinking;
+    elements.bud.classList.toggle("bud--speaking", speaking);
+    elements.bud.classList.toggle("bud--sleeping", sleeping);
+    elements.bud.classList.toggle("bud--thinking", thinking);
+    elements.bud.classList.toggle("bud--listening", listening);
+    // a soft hoot the moment he wakes (sleeping -> not sleeping)
+    if (wasSleeping && !sleeping) playHoot();
+    wasSleeping = sleeping;
   }
+  highlightLensBook(state.lastLens);
   renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
   if (elements.coachLens) {
@@ -309,6 +370,20 @@ function render() {
   renderBackendStatus();
 
   elements.transcriptList.innerHTML = "";
+  if (state.transcript.length === 0) {
+    // an idle state with a bit of character instead of an empty box: a quill
+    // waiting over a blank page. Text is deliberately minimal — edit freely.
+    const empty = document.createElement("li");
+    empty.className = "transcript-empty";
+    empty.setAttribute("aria-hidden", "true");
+    const mark = document.createElement("span");
+    mark.className = "transcript-empty-mark";
+    const note = document.createElement("span");
+    note.className = "transcript-empty-note";
+    note.textContent = state.active ? "Listening… the log fills as you talk." : "Nothing logged yet. Bud's pen is ready.";
+    empty.append(mark, note);
+    elements.transcriptList.appendChild(empty);
+  }
   state.transcript.forEach((line, index) => {
     const item = document.createElement("li");
     const meta = document.createElement("span");
@@ -1095,6 +1170,66 @@ function isImportantSuggestion(payload) {
   ].some((keyword) => stateName.includes(keyword));
 }
 
+// ---- Sound effects (off by default) ----
+// Synthesised with Web Audio so nothing has to be bundled or fetched. Two
+// cues, kept quiet: a soft two-note hoot when Bud wakes, and a paper flutter
+// when a fresh suggestion lands. getSoundCtx() returns null unless the user
+// has switched effects on, so audio never fires unasked.
+let soundCtx = null;
+function getSoundCtx() {
+  if (!state.soundEffects) return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!soundCtx) soundCtx = new AudioCtx();
+  if (soundCtx.state === "suspended") soundCtx.resume();
+  return soundCtx;
+}
+
+function playHoot() {
+  const ctx = getSoundCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const level = 0.11 * (0.5 + state.speechVolume * 0.5);
+  [[523.25, 0], [392.0, 0.17]].forEach(([freq, offset]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + offset);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.92, now + offset + 0.2);
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.exponentialRampToValueAtTime(level, now + offset + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + offset);
+    osc.stop(now + offset + 0.28);
+  });
+}
+
+function playPageTurn() {
+  const ctx = getSoundCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = 0.26;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) {
+    const t = i / data.length;
+    // decaying noise with a light flutter, so it reads as a page, not a hiss
+    const env = Math.exp(-7 * t) * (0.55 + 0.45 * Math.sin(t * 46));
+    data[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const band = ctx.createBiquadFilter();
+  band.type = "bandpass";
+  band.frequency.value = 2500;
+  band.Q.value = 0.7;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.34 * (0.5 + state.speechVolume * 0.5);
+  src.connect(band).connect(gain).connect(ctx.destination);
+  src.start(now);
+}
+
 function speakText(text) {
   if (!SpeechSynthesisUtterance || !speechSynthesis || !text) return;
   if (state.lastSpokenSuggestion === text && speechSynthesis.speaking) return;
@@ -1137,6 +1272,15 @@ function toggleSpokenSuggestions() {
     stopSpeaking();
     return;
   }
+  render();
+}
+
+function toggleSoundEffects() {
+  state.soundEffects = elements.soundEffectsInput.checked;
+  state.lastAction = state.soundEffects ? "Sound effects on" : "Sound effects off";
+  // the checkbox click is a user gesture, so it's a valid moment to warm up
+  // the audio context and confirm it's audible with a single hoot
+  if (state.soundEffects) playHoot();
   render();
 }
 
@@ -1490,6 +1634,7 @@ elements.pauseButton.addEventListener("click", togglePause);
 elements.endButton.addEventListener("click", endSession);
 elements.deleteButton.addEventListener("click", deleteSessionData);
 elements.spokenSuggestionsInput.addEventListener("change", toggleSpokenSuggestions);
+elements.soundEffectsInput.addEventListener("change", toggleSoundEffects);
 elements.speechFrequencyInput.addEventListener("change", updateSpeechSettings);
 elements.speechVolumeInput.addEventListener("input", updateSpeechSettings);
 elements.speechRateInput.addEventListener("input", updateSpeechSettings);
