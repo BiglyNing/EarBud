@@ -4,28 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#F5EFE3">
-    <meta name="description" content="Meet Bud, the owl in your earpiece. He listens along, does the reading, and whispers your next move — so you can keep the conversation going.">
-    <title>EarBud — the owl in your earpiece</title>
-    <!-- Bud himself in the browser tab, drawn as an inline SVG so there's no
-         asset to ship and it stays crisp at any density. -->
+    <meta name="description" content="Meet Bud, your wise and quirky friend. He listens along, does the reading, and whispers your next move so you can keep the conversation going.">
+    <title>EarBud, your wise and quirky friend</title>
+    <!-- Bud in the browser tab, as an inline SVG -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23F5EFE3'/%3E%3Cpath d='M9 6 l3 4 -5 0 z' fill='%23A46650'/%3E%3Cpath d='M23 6 l-3 4 5 0 z' fill='%23A46650'/%3E%3Ccircle cx='16' cy='18' r='11' fill='%23A46650'/%3E%3Ccircle cx='11.5' cy='16' r='5' fill='%23F5E7E7' stroke='%23211C18' stroke-width='1.7'/%3E%3Ccircle cx='20.5' cy='16' r='5' fill='%23F5E7E7' stroke='%23211C18' stroke-width='1.7'/%3E%3Ccircle cx='11.7' cy='16.4' r='1.9' fill='%23211C18'/%3E%3Ccircle cx='20.3' cy='16.4' r='1.9' fill='%23211C18'/%3E%3Cpath d='M14.4 21 L16 24 L17.6 21 Z' fill='%23E59D6A' stroke='%23211C18' stroke-width='0.9' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Fraunces replaces Bricolage Grotesque as the display face. It carries
-         SOFT and WONK axes — WONK swaps in the tilted, off-kilter letterforms
-         the designer drew on purpose — which is about as close to lettering as
-         type gets, and a much better fit for a field guide than a grotesk. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,500..800,0..100,0..1&family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,500..800,0..100,0..1&family=Lora:ital,wght@0,400..700;1,400..600&family=Spline+Sans+Mono:wght@500;600&display=swap">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <div class="paper-grain" aria-hidden="true"></div>
 
-    <!-- Roughening filters. A fractal-noise displacement map pushes each point
-         of a shape off its true path, so a straight border comes out wobbling
-         like an inked line. These are applied ONLY to border-drawing pseudo-
-         elements (never to a box containing text), which keeps type crisp.
-         Three strengths so not every line is disturbed by the same amount. -->
+    <!-- Roughening filters: a fractal-noise displacement map wobbles borders so
+         they read as inked lines. Applied only to border-drawing pseudo-elements
+         (never a box with text), at three strengths. -->
     <svg class="sketch-defs" width="0" height="0" aria-hidden="true" focusable="false">
       <defs>
         <filter id="roughen-lite" x="-12%" y="-12%" width="124%" height="124%">
@@ -54,13 +47,9 @@
             </svg>
           </span>
           <span class="brandmark-word">EarBud</span>
-          <span class="brandmark-tag">conversation coach</span>
+          <span class="brandmark-tag">Conversation coach</span>
         </div>
-        <p class="topbar-tagline">Meet Bud. He's done the reading so you don't have to.</p>
-        <div class="topbar-status">
-          <div class="device-pill" id="deviceState">Mic standby</div>
-          <div class="status-dot" id="sessionStatus">Inactive</div>
-        </div>
+        <img class="topbar-tagline" src="assets/tagline-handwritten.png" alt="Bud's done the reading 4 you" />
       </header>
 
       <main class="board">
@@ -69,9 +58,7 @@
           <div class="shelf-crown"><h2 class="carved" id="setup-eyebrow">Setup</h2></div>
           <div class="shelf-body">
             <div class="shelf-level">
-          <!-- still an <ol> (the order matters) but the numbered circles are
-               gone — that stepper is the most generic onboarding pattern there
-               is. Drawn ticks and staggered indents read as a jotted list. -->
+          <!-- an <ol> (order matters), styled as a jotted list with drawn ticks -->
           <ol class="play-steps">
             <li>Say your objective out loud</li>
             <li>Say your codeword when you want help</li>
@@ -143,10 +130,8 @@
         <!-- ===== Bud + Coach (centerpiece) ===== -->
         <section class="col col-coach" aria-labelledby="coach-eyebrow">
           <div class="bud-stage">
-            <!-- viewBox is cropped just below the feet (they end at y=518) and
-                 the drawing is anchored to the bottom of its box, so Bud's feet
-                 always land on the stage's bottom edge no matter how the SVG is
-                 letterboxed. That's what lets the bubble tuck under them. -->
+            <!-- viewBox cropped just below the feet and bottom-anchored, so Bud's
+                 feet always land on the stage floor and the bubble tucks under. -->
             <svg id="bud" class="bud" viewBox="0 0 480 524" preserveAspectRatio="xMidYMax meet" fill="none" role="img" aria-label="Bud, the EarBud owl mascot">
               <defs>
                 <clipPath id="budLens">
@@ -230,12 +215,11 @@
             </svg>
             <div class="bud-books" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="bud-zzz" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
-            <!-- shown while Bud waits on the coach — he's mulling it over -->
+            <!-- shown while Bud waits on the coach -->
             <div class="bud-think" aria-hidden="true"><i></i><i></i><i></i></div>
           </div>
 
-          <!-- wrapped so the bubble can be pulled up under Bud's feet while
-               the caption stays pinned above its top edge -->
+          <!-- wrapped so the bubble pulls up under Bud's feet, caption pinned above -->
           <div class="bubble-wrap">
             <p class="eyebrow" id="coach-eyebrow">Bud says</p>
             <div class="suggestion-box" id="suggestionBox">
@@ -256,7 +240,7 @@
             </div>
             <div>
               <span class="meta-label">Lens</span>
-              <strong id="coachLens">—</strong>
+              <strong id="coachLens">None</strong>
             </div>
             <div>
               <span class="meta-label">Last action</span>
@@ -287,8 +271,7 @@
         <section class="col col-transcript shelf" aria-labelledby="transcript-eyebrow">
           <div class="shelf-crown">
             <h2 class="carved" id="transcript-eyebrow">Transcript</h2>
-            <!-- somebody put a mug down on the shelf. There's one on the
-                 bookcase below; this is where it used to sit. -->
+            <!-- somebody set a mug down on the shelf -->
             <span class="coffee-ring" aria-hidden="true"></span>
           </div>
           <div class="shelf-body">
@@ -306,7 +289,7 @@
               <button id="swapSpeakerButton" class="secondary-action" type="button" disabled>Swap Me / Them</button>
             </div>
             <div class="live-transcript" id="liveTranscript">
-              Start a session, allow mic access, then speak. Live words show here.
+              Start a session and speak. Conversation shows here.
             </div>
           </div>
             </div>
@@ -338,7 +321,7 @@
               </label>
               <label>
                 Speed
-                <input id="speechRateInput" type="range" min="0.75" max="1.25" step="0.05" value="0.95">
+                <input id="speechRateInput" type="range" min="0.75" max="1.25" step="0.05" value="1.1">
               </label>
               <div class="control-grid voice-actions">
                 <button id="testVoiceButton" class="control-button" type="button">Test</button>
@@ -361,11 +344,46 @@
           </div>
         </section>
       </main>
+    </div>
 
-      <footer class="footbar">
-        <span class="foot-sign">Field notes, kept by Bud.</span>
-        <span>Audio is transcribed live and never saved to disk.</span>
-      </footer>
+    <!-- greenery creeping in from two opposite corners, drawn as inline SVG -->
+    <div class="vines" aria-hidden="true">
+      <svg class="vine vine-tl" viewBox="0 0 170 170" width="150" height="150" fill="none">
+        <g stroke="var(--sage-deep)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M4 4C34 20 51 45 53 80c2 31 15 53 47 71" stroke-width="3.2"/>
+          <path d="M102 155c11 6 21 3 22-8" stroke-width="2.3"/>
+        </g>
+        <g fill="var(--forest)" stroke="var(--sage-deep)" stroke-width="1.3" stroke-linejoin="round">
+          <path d="M41 45C27 43 17 31 21 16 35 22 47 33 41 45Z"/>
+          <path d="M51 79C35 75 23 61 27 43 45 49 59 61 51 79Z"/>
+          <path d="M53 93C69 93 85 83 85 62 67 66 51 74 53 93Z"/>
+          <path d="M71 129C87 131 103 122 105 101 87 104 71 113 71 129Z"/>
+        </g>
+        <g stroke="var(--sage-deep)" stroke-width="1" opacity="0.45" fill="none">
+          <path d="M41 45C34 37 28 29 23 20"/>
+          <path d="M51 79C43 70 37 59 31 47"/>
+          <path d="M53 93C63 87 73 80 81 68"/>
+          <path d="M71 129C81 121 91 114 101 106"/>
+        </g>
+      </svg>
+      <svg class="vine vine-br" viewBox="0 0 170 170" width="150" height="150" fill="none">
+        <g stroke="var(--sage-deep)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M4 4C34 20 51 45 53 80c2 31 15 53 47 71" stroke-width="3.2"/>
+          <path d="M102 155c11 6 21 3 22-8" stroke-width="2.3"/>
+        </g>
+        <g fill="var(--forest)" stroke="var(--sage-deep)" stroke-width="1.3" stroke-linejoin="round">
+          <path d="M41 45C27 43 17 31 21 16 35 22 47 33 41 45Z"/>
+          <path d="M51 79C35 75 23 61 27 43 45 49 59 61 51 79Z"/>
+          <path d="M53 93C69 93 85 83 85 62 67 66 51 74 53 93Z"/>
+          <path d="M71 129C87 131 103 122 105 101 87 104 71 113 71 129Z"/>
+        </g>
+        <g stroke="var(--sage-deep)" stroke-width="1" opacity="0.45" fill="none">
+          <path d="M41 45C34 37 28 29 23 20"/>
+          <path d="M51 79C43 70 37 59 31 47"/>
+          <path d="M53 93C63 87 73 80 81 68"/>
+          <path d="M71 129C81 121 91 114 101 106"/>
+        </g>
+      </svg>
     </div>
 
     <script src="app.js" type="module"></script>

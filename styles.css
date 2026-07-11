@@ -39,34 +39,30 @@
   --sage-deep: #2f5a25;
 
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Lora", "Iowan Old Style", Georgia, "Times New Roman", serif;
   --font-mono: "Spline Sans Mono", ui-monospace, monospace;
   --font-hand: "Caveat", "Bradley Hand", "Segoe Script", cursive;
 
-  /* soft ink-wash shadows — the old crisp 0-blur offsets read as vector
-     stickers; paper casts a diffuse shadow, not a hard duplicate edge */
+  /* soft ink-wash shadows */
   --shadow: 3px 5px 12px rgba(33, 28, 24, 0.14);
   --shadow-sm: 2px 3px 7px rgba(33, 28, 24, 0.12);
 
   /* ---- Hand-drawn geometry ----
-     Nothing drawn by hand has four matching corners. Each variant pairs
-     tight corners with loose ones (and different horizontal vs vertical
-     radii, via the `/`) so every box closes a little imperfectly. Rotate
-     the variants across neighbouring elements so no two boxes repeat. */
+     Each variant pairs tight corners with loose ones (and different h/v radii
+     via `/`) so boxes close imperfectly. Rotate across neighbours so none repeat. */
   --hand-box-a: 26px 9px 22px 11px / 11px 24px 9px 26px;
   --hand-box-b: 9px 26px 11px 22px / 24px 9px 26px 11px;
   --hand-box-c: 20px 13px 28px 8px / 9px 25px 10px 22px;
   --hand-col: 34px 10px 28px 12px / 14px 30px 11px 34px;
 
-  /* smaller-amplitude wobble for controls, which are short enough that
-     the box radii above would clamp into a lopsided pill */
+  /* smaller-amplitude wobble for controls (the box radii would clamp to a pill) */
   --hand-ctl-a: 16px 6px 13px 8px / 8px 13px 6px 16px;
   --hand-ctl-b: 6px 16px 8px 13px / 13px 6px 16px 8px;
 
-  /* a pen doesn't hold one weight around a shape */
+  /* uneven pen pressure around a shape */
   --ink-uneven: 2.4px 1.7px 2.1px 2.7px;
 
-  /* a circle drawn freehand never quite meets itself */
+  /* a freehand circle that doesn't quite meet itself */
   --hand-circle: 49% 51% 48% 52% / 52% 48% 51% 49%;
 }
 
@@ -113,13 +109,32 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   padding: 14px clamp(14px, 2.4vw, 34px) 16px;
 }
 
+/* ---------- Corner vines (decorative only) ---------- */
+.vines {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.vine {
+  position: fixed;
+  width: clamp(88px, 10vw, 138px);
+  height: auto;
+  opacity: 0.5;
+}
+.vine-tl { top: -10px; left: -8px; }
+.vine-br { right: -8px; bottom: -10px; transform: rotate(180deg); }
+/* keep the corners uncluttered on the stacked/scrolling layout */
+@media (max-width: 1040px), (max-height: 600px) {
+  .vines { display: none; }
+}
+
 /* ---------- Top bar ---------- */
 .topbar {
   position: relative;
   flex: 0 0 auto;
   display: grid;
-  /* match the board's 3 columns so the tagline sits in the middle track,
-     centered over Bud rather than over the whole header */
+  /* match the board's 3 columns so the tagline centers over Bud */
   grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.25fr) minmax(280px, 0.95fr);
   align-items: center;
   gap: 14px;
@@ -133,12 +148,10 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   justify-self: center;
   align-self: center;
   margin: 0;
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.12rem;
-  line-height: 1.2;
-  color: var(--clay);
+  height: 2.6rem;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -147,6 +160,11 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   align-items: center;
   gap: 11px;
   justify-self: start;
+}
+
+/* clear the logo of the top-left vine, only where that vine is drawn */
+@media (min-width: 1041px) and (min-height: 601px) {
+  .brandmark { margin-left: clamp(64px, 7vw, 104px); }
 }
 
 .brandmark-icon {
@@ -169,16 +187,35 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   letter-spacing: -0.02em;
 }
 
+/* an acorn beside the wordmark: rounded cap up top, tapering to a point below */
 .brandmark-tag {
-  padding: 5px 12px;
+  padding: 11px 14px 13px;
   border: 1.5px solid var(--ink);
-  border-radius: 999px;
+  border-radius: 46% 46% 46% 46% / 42% 42% 100% 100%;
   color: var(--clay);
   font-size: 0.74rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   background: var(--cream);
+}
+
+/* the acorn's cap: a scaly dome with a stem nub, riding above the nut body */
+.brandmark-tag::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  transform: translateX(-50%);
+  width: 82%;
+  height: 15px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 2.5px, rgba(33, 28, 24, 0.18) 2.5px 3.5px),
+    var(--wood);
+  border: 1.5px solid var(--ink);
+  border-radius: 44% 44% 40% 40% / 78% 78% 60% 60%;
+  box-shadow: 0 -4px 0 -3px var(--ink); /* stem nub */
+  z-index: 1;
 }
 
 .topbar-status {
@@ -299,8 +336,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   flex: 1 1 auto;
   min-height: 200px;
   display: flex;
-  /* bottom-align so a smaller Bud still lands his feet on the stage floor,
-     keeping the bubble tucked under them (the SVG is xMidYMax-anchored) */
+  /* bottom-align so Bud's feet land on the stage floor (SVG is xMidYMax-anchored) */
   align-items: flex-end;
   justify-content: center;
   border-radius: 16px;
@@ -316,8 +352,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   animation: budHalo 4.5s ease-in-out infinite;
 }
 
-/* a small stack of books on the floor beside Bud, our scholar owl — purely
-   decorative, sits behind him so he reads as standing next to it */
+/* a small stack of books on the floor beside Bud, sitting behind him */
 .bud-books {
   position: absolute;
   bottom: 8%;
@@ -361,7 +396,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   animation: budWingR 3s ease-in-out infinite;
 }
 
-/* speaking: beak chatters + the right wing gestures while Bud talks aloud */
+/* speaking: beak chatters + right wing gestures */
 #bud-beak {
   transform-box: fill-box;
   transform-origin: center top;
@@ -870,10 +905,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* =====================================================================
-   Bookshelf sidebars — Setup & Transcript become wooden shelves.
-   The wood frame is chrome; real controls stay on cream "planks" so
-   text never sits on dark wood. Empty space fills with rows of book
-   spines (the coaching lenses), each row resting on a wooden board.
+   Bookshelf sidebars — Setup & Transcript become wooden shelves. Controls
+   stay on cream "planks" so text never sits on dark wood; empty space fills
+   with rows of book spines (the coaching lenses).
    ===================================================================== */
 .shelf {
   padding: 0;
@@ -930,8 +964,8 @@ input:focus, select:focus, textarea:focus {
 .shelf-level {
   position: relative;
   flex: 0 0 auto;
-  /* symmetric wood gap above and below the box (bottom = 8 + 13px board),
-     so each cream box sits centered between its shelf dividers */
+  /* symmetric wood gap above/below (bottom = 8 + 13px board) so each box
+     centers between its dividers */
   padding: 8px 14px 21px;
 }
 .shelf-level::after {
@@ -947,10 +981,8 @@ input:focus, select:focus, textarea:focus {
   z-index: 0;
 }
 .shelf-level > * { position: relative; z-index: 1; }
-/* min-height reserves room for the cream placard (~85px) plus this level's own
-   29px padding — the bottom 13px of which is the wood divider board. Without it
-   the grow level shrinks under its content when Spoken suggestions opens and the
-   board clips up into the transcript box; instead the shelf body scrolls. */
+/* min-height reserves room for the placard + padding so the grow level doesn't
+   shrink under its content (the shelf body scrolls instead) */
 .shelf-level.grow { flex: 1 1 auto; min-height: 118px; display: flex; flex-direction: column; }
 
 /* cream placards: real controls rest on these so text stays readable */
@@ -1008,13 +1040,10 @@ input:focus, select:focus, textarea:focus {
    above them — the bookcase only takes the height its rows need. */
 .col-setup .bookcase { flex: 0 0 auto; }
 
-/* Instead, the goal box directly above the books soaks up whatever vertical
-   slack the window/zoom creates, so its cream placard scales to fill the space
-   rather than letting a dark gap open up over the spines. */
+/* the goal box above the books soaks up vertical slack so no gap opens over
+   the spines */
 .col-setup .shelf-level--fill { flex: 1 1 auto; display: flex; flex-direction: column; }
-/* the form rows distribute through the extra height (objective pinned to the
-   top, Start Session to the bottom, even gaps between) so the box reads as
-   filled instead of top-packed with blank space below. gap stays the minimum. */
+/* form rows distribute through the extra height (objective top, Start bottom) */
 .col-setup .shelf-level--fill > .goal-form { flex: 1 1 auto; align-content: space-between; }
 
 /* a shelf row: narrow book spines + a knick-knack, resting on a wooden board */
@@ -1046,9 +1075,8 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  /* top padding clears the gold/maroon header band, bottom keeps letters off
-     the board; the asymmetry centers the title between band and spine end.
-     Font size is fit per-spine in JS (fitSpine) so each title fills its spine. */
+  /* top padding clears the header band, bottom keeps letters off the board.
+     Font size is fit per-spine in JS (fitSpine). */
   padding: 16px 0 8px;
   font-family: var(--font-display);
   font-weight: 700;
@@ -1071,22 +1099,20 @@ input:focus, select:focus, textarea:focus {
 .book--dark { color: rgba(40, 30, 16, 0.85); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); }
 .book--dark::before { background: var(--maroon); }
 
-/* one gentle leaner per row for realism. The top swings left toward its
-   neighbor, so reserve extra room on that side: the title just kisses the
-   neighbouring spine instead of clipping through it. */
+/* one gentle leaner per row. Top swings left, so reserve room on that side */
 .book--lean {
   transform: rotate(-4deg);
   transform-origin: bottom right;
   margin: 0 1px 0 9px;
 }
-/* mirror of the above — top swings right, so reserve the room on the right */
+/* mirror: top swings right */
 .book--lean-right {
   transform: rotate(4deg);
   transform-origin: bottom left;
   margin: 0 9px 0 1px;
 }
 
-/* ---- shelf knick-knacks (simple primitives — easy to redraw in Figma) ---- */
+/* ---- shelf knick-knacks ---- */
 .object { position: relative; flex: 0 0 auto; align-self: flex-end; margin: 0 4px; }
 
 /* Pokeball: two-tone circle + center button */
@@ -1152,8 +1178,7 @@ input:focus, select:focus, textarea:focus {
 .object--stack i:nth-child(2) { bottom: 17px; left: 6px; width: 82px; background: #7c9a5a; }
 .object--stack i:nth-child(3) { bottom: 34px; left: 3px; width: 70px; background: #c9a24a; }
 
-/* Mug: solid rounded body + simple C-handle.
-   Flat fill, one corner radius, one stroke colour — trivial to redraw. */
+/* Mug: rounded body + C-handle */
 .object--mug { width: 69px; height: 56px; }
 .object--mug::before {
   content: "";
@@ -1178,9 +1203,7 @@ input:focus, select:focus, textarea:focus {
   border-radius: 0 16px 16px 0;
 }
 
-/* =====================================================================
-   Bud dozes until the codeword wakes him (.bud--sleeping toggled in JS).
-   ===================================================================== */
+/* ---- Bud dozes until the codeword wakes him (.bud--sleeping toggled in JS) ---- */
 .bud--sleeping { animation: budSleepBob 6s ease-in-out infinite; }
 .bud--sleeping #bud-wing-l,
 .bud--sleeping #bud-wing-r { animation: none; }
@@ -1235,19 +1258,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* =====================================================================
-   Hand-made finish — field-guide marginalia over the printed system.
-   The bones are already illustrated (owl, wood shelves, paper grain);
-   these touches pull the *chrome* the same direction so it stops
-   reading as a generated design system: handwritten labels instead of
-   tracked-uppercase chips, a scrawled tagline, an inked underline, and
-   a couple of "taped-in note" details. Additive on purpose — easy to
-   dial back a rule at a time.
+   Hand-made finish — field-guide marginalia: handwritten labels, a scrawled
+   tagline, an inked underline, and taped-in note details.
    ===================================================================== */
 
-/* The tiny UPPERCASE·TRACKED labels are the loudest "design system"
-   tell; rewritten as handwritten margin notes they read as a person's
-   annotations. (Transcript speaker tags stay mono on purpose — a real
-   log should look typed, and the contrast sells the handwriting.) */
+/* uppercase·tracked labels rewritten as handwritten margin notes (transcript
+   speaker tags stay mono — a real log should look typed) */
 .meta-label {
   font-family: var(--font-hand);
   text-transform: none;
@@ -1257,8 +1273,7 @@ input:focus, select:focus, textarea:focus {
   color: var(--muted);
 }
 
-/* "Bud says" becomes a handwritten caption over his speech bubble,
-   not a tracked eyebrow with a dash */
+/* "Bud says" as a handwritten caption over the bubble */
 #coach-eyebrow {
   font-family: var(--font-hand);
   text-transform: none;
@@ -1271,10 +1286,7 @@ input:focus, select:focus, textarea:focus {
 
 /* the tagline reads like a note scrawled in the margin above Bud */
 .topbar-tagline {
-  font-family: var(--font-hand);
-  font-weight: 600;
-  font-size: 1.5rem;
-  color: var(--clay-deep);
+  height: 3.1rem;
   transform: rotate(-1.4deg);
 }
 
@@ -1287,10 +1299,8 @@ input:focus, select:focus, textarea:focus {
 /* the brand chip sits slightly askew, like a pinned tag */
 .brandmark-tag { transform: rotate(-2deg); }
 
-/* The objective is a field note taped into the setup shelf. ::before is
-   spent on its roughened ring (see the sketchbook pass below), so both
-   tape strips ride on ::after as two background images on one strip
-   laid across the note's top edge. */
+/* The objective is a field note taped into the setup shelf. ::before is spent on
+   its roughened ring, so both tape strips ride on ::after. */
 .objective-display {
   position: relative;
   transform: rotate(-0.5deg);
@@ -1336,17 +1346,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* =====================================================================
-   Sketchbook pass — drawn geometry instead of vector geometry.
-   The tell of a machine-made UI is that every shape is a perfect
-   rounded rectangle with an identical crisp shadow. Three moves fix it:
+   Sketchbook pass — drawn geometry instead of vector geometry:
      1. irregular corner radii, so no corner matches its neighbour;
-     2. outlines drawn as roughened *rings* (a pseudo-element pushed off
-        its true path by an SVG displacement map) rather than crisp CSS
-        borders — this makes edges wobble along their length, which
-        corner-radius tricks alone cannot do. Text never sits inside a
-        filtered element, so type stays perfectly sharp;
-     3. line weight varies around a shape and by importance, the way a
-        pen's would.
+     2. outlines drawn as roughened rings (a pseudo-element displaced by an SVG
+        map) so edges wobble along their length; text stays outside the filter;
+     3. line weight varies around a shape and by importance.
    ===================================================================== */
 
 .sketch-defs {
@@ -1357,10 +1361,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ---- 1. Boxes that hand their outline to a roughened ring ----
-   The real border goes transparent (kept, so box-sizing is unchanged)
-   and ::after redraws it. Anything that scrolls is excluded — an
-   absolutely-positioned ring inside a scroll container would slide
-   away from its box. */
+   The real border goes transparent (kept for box-sizing) and ::after redraws it.
+   Scrolling boxes are excluded — the absolute ring would slide off. */
 .suggestion-box,
 .live-transcript,
 .coach-meta > div,
@@ -1420,9 +1422,8 @@ input:focus, select:focus, textarea:focus {
 .coach-meta > div:nth-child(2) { border-radius: var(--hand-box-b); transform: rotate(0.4deg); }
 .coach-meta > div:nth-child(3) { border-radius: var(--hand-box-c); transform: rotate(-0.3deg); }
 
-/* transcript lines alternate their wobble so a long list never falls
-   into a visible repeat; lighter ink and a cheaper filter, since there
-   can be dozens of them on screen */
+/* alternate the wobble so a long list never repeats visibly; lighter ink and a
+   cheaper filter, since there can be dozens on screen */
 .transcript-list li:nth-child(odd) { border-radius: var(--hand-box-a); transform: rotate(-0.3deg); }
 .transcript-list li:nth-child(even) { border-radius: var(--hand-box-b); transform: rotate(0.35deg); }
 .transcript-list li::after {
@@ -1440,8 +1441,8 @@ input:focus, select:focus, textarea:focus {
 /* even the shelf carcass is not perfectly square-cut */
 .shelf { border-radius: 6px 3px 5px 4px / 4px 5px 3px 6px; }
 
-/* ---- Controls keep real borders (focus rings and state colours live
-   there) but take the wobble in their corners and pen pressure ---- */
+/* ---- Controls keep real borders (focus/state colours live there) but take the
+   wobble in their corners and pen pressure ---- */
 .primary-action {
   position: relative;
   border-radius: var(--hand-ctl-b);
@@ -1518,10 +1519,8 @@ select {
 
 /* ---- 3. Bud's bubble: an inked tail, and a rougher outline ---- */
 
-/* the two stacked CSS triangles were perfectly geometric; this is one
-   drawn tail whose sides bow. fill matches --field so the base seam
-   vanishes under the bubble's own ring. Its reach above the bubble is
-   kept under the column's 12px gap or it climbs into "Bud says". */
+/* one drawn tail whose sides bow. fill matches --field so the base seam vanishes
+   under the bubble's ring. Reach is kept under the column's 12px gap. */
 .suggestion-box::before {
   bottom: 100%;
   left: 50%;
@@ -1567,12 +1566,10 @@ select {
   .suggestion-box::before { transform: translateX(-50%); }
 }
 
-/* ---- Rings for the remaining crisp shapes: the note, the pills and
-   the buttons. State colour rides on the ring, so each element's real
-   border is held transparent (its width is kept, for box-sizing).
-   Inputs and selects are deliberately left with real borders: replaced
-   elements can't carry pseudo-elements, and their focus ring lives on
-   the border colour. ---- */
+/* ---- Rings for the remaining crisp shapes (note, pills, buttons). State colour
+   rides on the ring, so each real border goes transparent (width kept for
+   box-sizing). Inputs/selects keep real borders — replaced elements can't carry
+   pseudo-elements, and their focus ring lives on the border. ---- */
 .objective-display { border-color: transparent; }
 
 .brandmark-tag,
@@ -1624,22 +1621,15 @@ select {
 .control-button.danger:hover:not(:disabled)::after { border-color: var(--brick); }
 
 /* =====================================================================
-   Composition pass — breaking the symmetry.
-   Wobbly borders can't disguise a layout of evenly divided thirds; even
-   division is the safe default a generator reaches for. So: Bud steps
-   off centre and stands on his own speech bubble, the two three-up rows
-   stop being equal thirds, and the bookshelf runs off its frame.
+   Composition pass — breaking the symmetry: Bud steps off centre onto his
+   bubble, the three-up rows stop being equal thirds, the shelf runs off frame.
    ===================================================================== */
 
 /* ---- Bud stands on his bubble, left of centre ---- */
 
-/* Bud paints over the bubble; the bubble tucks up beneath his feet.
-   The pull has to clear the column's 12px gap, so the feet break the
-   bubble's top edge by (52 - 12) = 40px. That figure is only reliable
-   because the SVG is bottom-anchored (see the viewBox note in the
-   markup) — otherwise letterboxing floats the feet off the stage floor
-   by an amount that changes with the viewport. .bud-stage is flex:1, so
-   it reclaims the 52px and Bud grows rather than the layout collapsing. */
+/* The bubble tucks up under Bud's feet. The pull clears the column's 12px gap,
+   so the feet break the bubble's top edge by 40px. Relies on the SVG being
+   bottom-anchored. .bud-stage is flex:1, so Bud grows rather than the layout. */
 .bud-stage { z-index: 2; }
 .bubble-wrap {
   position: relative;
@@ -1651,8 +1641,7 @@ select {
 /* the halo follows Bud down instead of floating over his head */
 .bud-stage::before { inset: 20% 10% 2%; }
 
-/* the stack rests on the bubble's top edge, left of the tail. In px,
-   not %, so it tracks the overlap rather than the stage height. */
+/* the stack rests on the bubble's top edge, left of the tail (px, not %) */
 .bud-books { left: 4%; right: auto; bottom: 29px; }
 
 /* the caption is pinned above the bubble, clear of the feet and on the
@@ -1666,25 +1655,22 @@ select {
   z-index: 3;
 }
 
-/* Bud touches the bubble himself now, so the tail is redundant here and
-   reads as a stray triangle floating beside him. It comes back in the
-   stacked layout, where the bubble sits detached below him. */
+/* Bud touches the bubble himself now, so the tail is redundant here (it comes
+   back in the stacked layout, where the bubble sits detached below him) */
 .suggestion-box::before { display: none; }
 
-/* the feet dip past the top edge, so the bubble opens its top padding
-   to keep them off the text */
+/* the feet dip past the top edge, so pad the top to keep them off the text */
 .suggestion-box { padding-top: 30px; }
 
 /* ---- The three-up rows stop being equal thirds ---- */
 
-/* Pause is the one you actually reach for; End and Delete are not its
-   equals. Scoped to the coach column so .voice-actions keeps its 2-up. */
+/* Pause is the one you reach for; End and Delete aren't its equals. Scoped to
+   the coach column so .voice-actions keeps its 2-up. */
 .col-coach > .control-grid {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* Lens (which book Bud drew the tactic from) is the interesting one --
-   give it the room and the type size to say so */
+/* Lens (which book Bud drew the tactic from) gets the room and type size */
 .coach-meta {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 1.05fr);
 }
@@ -1692,11 +1678,11 @@ select {
 
 /* ---- The bookshelf runs off its frame ---- */
 
-/* Cropped harder on the left than the right, so the shelf reads as
-   continuing past the column rather than being neatly centred in it.
-   The clip lives on .bookcase: putting it on .shelf-body (overflow-y:
-   auto) would compute overflow-x to auto and add a scrollbar. */
-.bookcase { overflow: hidden; }
+/* Cropped harder on the left, so the shelf reads as continuing past the column.
+   The clip lives on .bookcase (on .shelf-body it would add a scrollbar).
+   margin-inline pulls the clip edge behind the drawn wall (.shelf::after, inset
+   2px) so bleeding spines are cut cleanly at that line. */
+.bookcase { overflow: hidden; margin-inline: 3px; }
 .book-shelf { padding-left: 0; padding-right: 0; }
 .books { margin: 0 -8px 0 -26px; padding-left: 0; }
 
@@ -1708,8 +1694,7 @@ select {
   .bud-stage::before { inset: 6% 10%; }
   .bud-books { left: 17%; right: auto; bottom: 8%; }
   .bud-zzz { right: 31%; }
-  /* back into flow above the bubble. It's inline-flex, so auto margins
-     won't centre it — justify-content does. */
+  /* back into flow above the bubble; justify-content centres the inline-flex */
   #coach-eyebrow {
     position: static;
     display: flex;
@@ -1724,22 +1709,17 @@ select {
   #coach-eyebrow { transform: none; }
 }
 
-/* =====================================================================
-   Finish pass — typeface, wood, the jotted list, and one artifact.
-   ===================================================================== */
+/* ---- Finish pass — typeface, wood, the jotted list, and one artifact ---- */
 
 /* ---- 1. The display face ----
-   Fraunces is a variable font with a WONK axis: at WONK 1 the designer's
-   deliberately off-kilter alternates swap in. SOFT rounds the terminals.
-   Turned up hardest on the wordmark, eased off where we need to read. */
+   Fraunces WONK 1 swaps in its off-kilter alternates; SOFT rounds the terminals.
+   Turned up on the wordmark, eased off where we need to read. */
 .brandmark-word {
   font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 96;
   font-weight: 700;
   letter-spacing: -0.01em;
   transform: rotate(-0.8deg);
   display: inline-block;
-  /* Fraunces sits on a deeper descender than Bricolage did, which left
-     the drawn underline floating clear of the baseline */
   line-height: 1;
   padding-bottom: 1px;
   background-size: 100% 6px;
@@ -1764,26 +1744,23 @@ select {
 .carved { font-size: 1.14rem; letter-spacing: 0.14em; }
 .brandmark-word { font-size: 1.82rem; }
 
-/* ---- 2. Wood that was drawn, not gradient-generated ----
-   The old surface was two repeating-linear-gradients: perfectly even
-   stripes at perfectly even intervals. Real grain wanders. These tiles
-   are wavy strokes at irregular spacing, dark and light mixed. */
+/* ---- 2. Wood grain ----
+   Wavy strokes at irregular spacing, dark and light mixed, so the grain wanders. */
 .shelf {
   position: relative;
   border-color: transparent;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='200' viewBox='0 0 90 200'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M8 0C5 40 11 70 7 100 3 130 11 165 8 200' stroke='%23000' stroke-opacity='0.10' stroke-width='1.6'/%3E%3Cpath d='M22 0C26 35 19 75 24 110 28 140 19 170 22 200' stroke='%23fff' stroke-opacity='0.08' stroke-width='1.2'/%3E%3Cpath d='M37 0C33 45 40 80 35 120 31 150 40 175 37 200' stroke='%23000' stroke-opacity='0.13' stroke-width='2'/%3E%3Cpath d='M52 0C56 30 49 70 54 105 58 140 49 175 52 200' stroke='%23000' stroke-opacity='0.07' stroke-width='1.3'/%3E%3Cpath d='M67 0C63 40 70 75 65 115 61 145 70 172 67 200' stroke='%23fff' stroke-opacity='0.07' stroke-width='1.1'/%3E%3Cpath d='M81 0C85 35 78 72 83 108 87 142 78 176 81 200' stroke='%23000' stroke-opacity='0.11' stroke-width='1.7'/%3E%3C/g%3E%3C/svg%3E") repeat,
     linear-gradient(180deg, var(--wood-light), var(--wood) 16%, var(--wood) 84%, var(--wood-dark));
-  /* the old gloss (a bright 2px inset highlight + heavy inner shadow)
-     read as a 3D render; wood is matte */
+  /* matte, no gloss */
   box-shadow:
     var(--shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 -2px 5px rgba(0, 0, 0, 0.20);
 }
 
-/* the case gets a drawn outline like everything else. inset 2px so the
-   displacement has room to wobble without being clipped by overflow. */
+/* the case's drawn outline. inset 2px gives the displacement room to wobble; it
+   sits on top (z-index 5) as the shelf's wall, and the bookcase clip meets it. */
 .shelf::after {
   content: "";
   position: absolute;
@@ -1825,9 +1802,7 @@ select {
     linear-gradient(180deg, var(--wood-light), var(--wood) 45%, var(--wood-dark));
 }
 
-/* ---- 3. The 1-2-3 stepper becomes a jotted list ----
-   Drawn ticks instead of numbered circles, and each line sits at its own
-   indent so the left edge never rules up into a column. */
+/* ---- 3. The stepper as a jotted list: drawn ticks, each line at its own indent ---- */
 .play-steps li {
   grid-template-columns: 18px 1fr;
   gap: 10px;
@@ -1882,15 +1857,12 @@ select {
 }
 
 /* =====================================================================
-   Behaviour pass — the shelf, Bud, empty states, and sound cues become
-   part of the app, not just scenery.
+   Behaviour pass — the shelf, Bud, and empty states react to app state.
    ===================================================================== */
 
 /* ---- 1. Bud pulls the cited book off the shelf ----
-   .book--pulled (set in JS when a suggestion names a source) lifts the
-   spine clear of the row, tilts it, and lights it gold. The bookcase
-   clips horizontally for the bleed, so we give the shelf enough headroom
-   above the spines for a lifted book to rise into without being cut. */
+   .book--pulled (set in JS) lifts the spine clear, tilts it, lights it gold.
+   The padding gives a lifted book headroom so it isn't clipped. */
 .book-shelf { padding-top: 22px; }
 
 .book {
@@ -1902,8 +1874,7 @@ select {
   transform: translateY(-19px) rotate(-3deg) scale(1.04);
   z-index: 4;
   color: #fff;
-  /* a cream inner ring separates the spine from the brown shelf (a gold
-     ring would blend into the wood), with a warm bloom outside it */
+  /* cream inner ring to separate the spine from the wood, warm bloom outside */
   box-shadow:
     inset 2px 0 0 rgba(255, 255, 255, 0.3),
     inset -3px 0 0 rgba(0, 0, 0, 0.22),

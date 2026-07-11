@@ -4,7 +4,9 @@ import {
   getSpeakerLabel,
   findSafetyIssue,
   createLocalCoachSuggestion,
-  parseAgentJson
+  parseAgentJson,
+  stripLeadingFiller,
+  redactCodewordFromSuggestion
 } from "../coachLogic.js";
 
 test("getSpeakerLabel maps known ids and defaults the rest to Me", () => {
@@ -95,4 +97,91 @@ test("parseAgentJson coerces wrong-typed fields to safe defaults", () => {
   assert.equal(payload.shouldChimeIn, false); // non-boolean → default
   assert.equal(payload.followUp, null); // blank string → null
   assert.equal(payload.lens, "None");
+});
+
+test("stripLeadingFiller removes an empathy preface and recapitalizes", () => {
+  assert.equal(
+    stripLeadingFiller("Totally get it, then ask their real ceiling."),
+    "Then ask their real ceiling."
+  );
+  assert.equal(
+    stripLeadingFiller("I hear you — name the deadline pressure."),
+    "Name the deadline pressure."
+  );
+  assert.equal(
+    stripLeadingFiller("Of course. Offer Wednesday or Thursday."),
+    "Offer Wednesday or Thursday."
+  );
+});
+
+test("stripLeadingFiller peels stacked openers", () => {
+  assert.equal(
+    stripLeadingFiller("Yeah, totally, ask what would change their mind."),
+    "Ask what would change their mind."
+  );
+});
+
+test("stripLeadingFiller leaves clean imperatives untouched", () => {
+  const clean = "Anchor high, then label their concern.";
+  assert.equal(stripLeadingFiller(clean), clean);
+});
+
+test("stripLeadingFiller does not truncate a sentence that merely starts with a filler word", () => {
+  // No delimiter after "Right", so it's part of the move, not a preface.
+  const move = "Right the record before they anchor low.";
+  assert.equal(stripLeadingFiller(move), move);
+});
+
+test("stripLeadingFiller keeps the original when the whole line is filler", () => {
+  // Nothing meaningful survives, so don't strip to empty.
+  assert.equal(stripLeadingFiller("Got it."), "Got it.");
+});
+
+test("redactCodewordFromSuggestion replaces a suggestion that says the codeword", () => {
+  const result = redactCodewordFromSuggestion({
+    phase: "Ask",
+    state: "Ask",
+    shouldChimeIn: true,
+    suggestion: "Ask them bud what their real budget is.",
+    followUp: null,
+    lens: "Never Split the Difference"
+  }, "bud");
+  assert.doesNotMatch(result.suggestion, /\bbud\b/i);
+  assert.equal(result.state, "Ask"); // other fields survive
+});
+
+test("redactCodewordFromSuggestion nulls a followUp that says the codeword", () => {
+  const result = redactCodewordFromSuggestion({
+    suggestion: "Name the deadline before proposing a date.",
+    followUp: "Remember to say bud when you want to pause."
+  }, "bud");
+  assert.equal(result.suggestion, "Name the deadline before proposing a date."); // clean suggestion untouched
+  assert.equal(result.followUp, null);
+});
+
+test("redactCodewordFromSuggestion leaves clean suggestions alone", () => {
+  const clean = {
+    suggestion: "Slow down and let them fill the silence.",
+    followUp: "Circle back to the timeline."
+  };
+  const result = redactCodewordFromSuggestion(clean, "bud");
+  assert.equal(result.suggestion, clean.suggestion);
+  assert.equal(result.followUp, clean.followUp);
+});
+
+test("redactCodewordFromSuggestion matches whole words only, not substrings", () => {
+  const result = redactCodewordFromSuggestion({
+    suggestion: "Ask about their budget and buddy system.",
+    followUp: null
+  }, "bud");
+  // "budget"/"buddy" contain "bud" but are not the codeword — leave them.
+  assert.match(result.suggestion, /budget/);
+});
+
+test("redactCodewordFromSuggestion honors a custom codeword", () => {
+  const result = redactCodewordFromSuggestion({
+    suggestion: "Tell them banana is the safe word here.",
+    followUp: null
+  }, "banana");
+  assert.doesNotMatch(result.suggestion, /\bbanana\b/i);
 });

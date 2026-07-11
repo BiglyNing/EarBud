@@ -10,7 +10,9 @@ import {
   getSpeakerLabel,
   findSafetyIssue,
   createLocalCoachSuggestion,
-  parseAgentJson
+  parseAgentJson,
+  stripLeadingFiller,
+  redactCodewordFromSuggestion
 } from "./coachLogic.js";
 
 const app = express();
@@ -328,26 +330,26 @@ app.post("/api/coach", async (req, res) => {
     return;
   }
 
-  const localFallback = createLocalCoachSuggestion({
+  const localFallback = redactCodewordFromSuggestion(createLocalCoachSuggestion({
     goal,
     latestLine,
     latestSpeaker,
     transcript,
     coachingActive
-  });
+  }), wakeWord);
 
   // Scan only the user's own intent (objective + their latest line). Scanning
   // the whole transcript would re-trip on the other person's words every call.
   const safetyIssue = findSafetyIssue([goal, latestLine].join("\n"));
   if (safetyIssue) {
-    res.json({
+    res.json(redactCodewordFromSuggestion({
       phase: "Boundary",
       state: "Boundary",
       shouldChimeIn: true,
       suggestion: safetyIssue,
       followUp: null,
       lens: "None"
-    });
+    }, wakeWord));
     return;
   }
 
@@ -363,9 +365,16 @@ app.post("/api/coach", async (req, res) => {
     formatPrinciples(principles),
     "These are reasoning influences, not scripts: apply the chosen tactic naturally and never quote or imitate book text.",
     "Name the book of the tactic you used in the lens field (e.g. \"48 Laws of Power\", \"Never Split the Difference\"); use \"None\" only when advising to keep listening.",
-    "Only chime in when advice is useful; otherwise say to keep listening.",
+    "You are called ONLY right after Them (the other person) finishes a turn — this is the moment to help Me respond. Default to chiming in (shouldChimeIn true) with one concrete move. Only set shouldChimeIn false when their turn is trivial filler ('okay', 'mm-hmm', 'right') or nothing useful genuinely applies.",
     "state must be one of: Opening, Exploring, Objection, Reframe, Ask, Closing, Reached, Blocked, Listen, Boundary.",
-    "The suggestion must be ONE short, blunt sentence of at most 15 words: the exact move to make, no preamble or hedging, easy to say out loud.",
+    "Length rule: aim for 6-10 words, and NEVER exceed 15. Before answering, count the words in your suggestion; if it is over 15, rewrite it shorter until it fits. A complete short suggestion always beats a long one.",
+    "Write the suggestion as a terse imperative move for Me to make in Me's own words — a direction Me can interpret and adapt, NOT a line to read aloud verbatim.",
+    "Start the suggestion with an imperative verb (Ask, Name, Offer, Mirror, Slow, Anchor, Acknowledge...). NEVER open with filler or an empathy preface such as 'Totally get it', 'I hear you', 'Got it', 'For sure', 'Makes sense', 'Of course', 'Absolutely', 'Right' — cut straight to the move.",
+    "Never write a quote for Me to say word-for-word. Coach the intent: what to do and why, so Me chooses the exact words.",
+    "Keep it plain and immediately understandable: no jargon, no book names inside the suggestion, no preamble, no hedging.",
+    "The user's codeword (given as \"Codeword\" in the input) toggles coaching on and off. NEVER use that word anywhere in the suggestion or followUp — voicing it would flip the session off. If a natural phrasing would include it, reword to avoid it.",
+    "Good suggestions: 'Acknowledge their budget worry, then ask their real ceiling.' / 'Slow down and let them fill the silence.' / 'Name the deadline pressure before proposing a date.'",
+    "Bad suggestions (too long, or scripted words to recite): 'Say to them, I completely understand that the price feels like a lot right now, so...' — never do this.",
     "The followUp value must be null unless there is a concrete next step to remember.",
     "Use persuasion, influence, framing, tactical empathy, status, and rhetorical technique freely to advance the user's objective.",
     "Stay truthful: do not fabricate facts, tell outright lies, make threats, or coerce the other person against their will.",
@@ -419,7 +428,9 @@ app.post("/api/coach", async (req, res) => {
       }
     });
 
-    const payload = parseAgentJson(completion.choices?.[0]?.message?.content);
+    const parsed = parseAgentJson(completion.choices?.[0]?.message?.content);
+    const deFillered = { ...parsed, suggestion: stripLeadingFiller(parsed.suggestion) };
+    const payload = redactCodewordFromSuggestion(deFillered, wakeWord);
     res.json(payload);
   } catch (error) {
     // Message only — keep transcript/goal content out of server logs.

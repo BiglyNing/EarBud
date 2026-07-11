@@ -31,11 +31,11 @@ const state = {
   phase: "Setup",
   conversationState: "Setup",
   transcript: [],
-  liveTranscript: "Start a session, allow microphone access, then speak. Live words show here.",
+  liveTranscript: "Start a session and speak. Conversation shows here.",
   followUps: [],
   review: "End a session to generate a local review.",
   lastAction: "None",
-  lastSuggestion: "Nothing, Bud is asleep. Start a session to wake him up.",
+  lastSuggestion: "Nothing, bud is dozing some z's",
   currentSuggestion: "",
   lastLens: "None",
   awaitingObjective: false,
@@ -43,7 +43,7 @@ const state = {
   soundEffects: false,
   speechFrequency: "all",
   speechVolume: 0.7,
-  speechRate: 0.95,
+  speechRate: 1.1,
   speechSpeaking: false,
   lastSpokenSuggestion: "",
   recognition: null,
@@ -67,7 +67,10 @@ const state = {
   lastConfidentSpeaker: null,
   health: null,
   lastCoachRequestAt: 0,
-  coachCooldownMs: 6000,
+  // Only fires once per completed Them-turn now, so this window just debounces
+  // duplicate detections of the same turn (diarization emits an unformatted then
+  // formatted final ~1s apart) — not genuine new turns, which are seconds apart.
+  coachCooldownMs: 3000,
   lastCodewordAt: 0,
   codewordCooldownMs: 2500
 };
@@ -83,7 +86,6 @@ const elements = {
   speakerModeInput: document.querySelector("#speakerModeInput"),
   speakerModeStatus: document.querySelector("#speakerModeStatus"),
   backendStatus: document.querySelector("#backendStatus"),
-  deviceState: document.querySelector("#deviceState"),
   suggestionBox: document.querySelector("#suggestionBox"),
   conversationState: document.querySelector("#conversationState"),
   coachLens: document.querySelector("#coachLens"),
@@ -98,7 +100,6 @@ const elements = {
   liveTranscript: document.querySelector("#liveTranscript"),
   liveSpeakerInput: document.querySelector("#liveSpeakerInput"),
   swapSpeakerButton: document.querySelector("#swapSpeakerButton"),
-  sessionStatus: document.querySelector("#sessionStatus"),
   reviewBox: document.querySelector("#reviewBox"),
   followupList: document.querySelector("#followupList"),
   spokenSuggestionsInput: document.querySelector("#spokenSuggestionsInput"),
@@ -112,10 +113,8 @@ const elements = {
 };
 
 let lastCuedSuggestion = "";
-let wasSleeping = true; // tracks the sleeping->awake edge so Bud hoots once on wake
+let wasSleeping = true;
 
-// Play Bud's "lens glint" once when a fresh suggestion appears. Purely cosmetic
-// and fully guarded, so it never affects coaching if the mascot isn't present.
 function triggerBudCue(suggestion) {
   const bud = elements.bud;
   if (!bud) return;
@@ -123,19 +122,12 @@ function triggerBudCue(suggestion) {
     bud.classList.remove("bud--cue");
     void bud.getBoundingClientRect(); // force reflow so the animation restarts
     bud.classList.add("bud--cue");
-    if (lastCuedSuggestion) playPageTurn(); // skip the very first render's default line
+    if (lastCuedSuggestion) playPageTurn(); // skip the first render's default line
   }
   lastCuedSuggestion = suggestion || "";
 }
 
-// ---- Bud pulls the book he's citing off the shelf ----
-// The coach returns a `lens` naming the source of its tactic (server.js asks
-// for titles like "Never Split the Difference"), and the shelves are built
-// from the same list. So when a lens comes back we find its spine and pull it
-// out — the decoration becomes a readout of where the advice came from.
-
-// Fold titles to a comparable core so "The 48 Laws of Power" (shelf) matches
-// "48 Laws of Power" (coach): drop punctuation, &→and, and a leading "the".
+// Match a coach lens against a shelf title: drop punctuation, &→and, leading "the".
 function normalizeTitle(text) {
   return String(text)
     .toLowerCase()
@@ -152,12 +144,11 @@ function highlightLensBook(lens) {
   if (!spines.length) return;
 
   const norm = lens && lens !== "None" ? normalizeTitle(lens) : "";
-  if (norm === (lastHighlightedLens || "")) return; // unchanged since last render
+  if (norm === (lastHighlightedLens || "")) return;
   lastHighlightedLens = norm;
 
-  // pick the spine whose core title is closest in length to the lens among
-  // those that contain (or are contained by) it — avoids a short title like
-  // "Impro" matching everything it's a substring of
+  // closest-length match among titles that contain or are contained by the lens,
+  // so a short title like "Impro" doesn't match everything it's a substring of
   let match = null;
   if (norm) {
     spines.forEach((spine) => {
@@ -172,10 +163,8 @@ function highlightLensBook(lens) {
   spines.forEach((spine) => spine.classList.toggle("book--pulled", spine === match));
 }
 
-// Decorative "lens library" — the books Bud has read, shown as spines on the
-// shelves so the sidebars fill out and hint at where the coaching comes from.
-// These mirror the sources in coachingPrinciples.js (plus a few more). Purely
-// cosmetic: the bookcases are aria-hidden and never affect coaching.
+// The books Bud has read, shown as spines on the shelves. Mirrors the sources
+// in coachingPrinciples.js (plus a few more). Decorative only.
 const LENS_BOOKS = [
   { full: "The 48 Laws of Power", spine: "48 Laws", color: "#592D2D" },
   { full: "The Prince", spine: "The Prince", color: "#A8392B" },
@@ -199,11 +188,9 @@ const LENS_BOOKS = [
   { full: "Made to Stick", spine: "Made to Stick", color: "#E59D6A", ink: "dark" }
 ];
 
-// Build the shelves: ONE row per sidebar. Spines flex-grow to fill the row (so
-// it always reads near-full) and stand tall enough to read each title. Each
-// shelf has its own widths/heights/lean/knick-knacks so the two rows look
-// distinct, not mirrored. Purely decorative. Objects with a numeric `at` sit
-// after that book index; `at: "end"` trails the row.
+// One row per sidebar. Each shelf has its own widths/heights/lean/knick-knacks
+// so the two rows look distinct. Objects with a numeric `at` sit after that book
+// index; `at: "end"` trails the row.
 const SHELF_LAYOUT = {
   setup: {
     widths: [30, 23, 35, 27, 33, 22, 31, 26, 36, 24],
@@ -229,10 +216,8 @@ function makeObject(kind) {
   return obj;
 }
 
-// Scale a spine's font so its full title fills the spine. The book is in
-// writing-mode: vertical-rl, so the title runs down the (block) height axis —
-// we grow the font until it would overflow the spine's height or width, then
-// step back. Each spine gets its own size, so long and short titles both fill.
+// Grow the font until the title would overflow the spine, then step back, so
+// long and short titles both fill their (vertical-rl) spine.
 function fitSpine(spine) {
   const minPx = 7;
   const maxPx = 27;
@@ -284,13 +269,11 @@ function renderLibrary() {
       spine.textContent = book.spine;
       strip.appendChild(spine);
 
-      // drop in any mid-row knick-knack that sits after this book
       layout.objects
         .filter((object) => object.at === idx)
         .forEach((object) => strip.appendChild(makeObject(object.kind)));
     });
 
-    // trailing knick-knacks round out the end of the shelf
     layout.objects
       .filter((object) => object.at === "end")
       .forEach((object) => strip.appendChild(makeObject(object.kind)));
@@ -298,12 +281,10 @@ function renderLibrary() {
     shelf.appendChild(strip);
     container.appendChild(shelf);
 
-    // now that the spines are laid out, size each title to fill its spine
     strip.querySelectorAll(".book").forEach(fitSpine);
   });
 
-  // refit once the display font finishes loading, since its metrics differ
-  // from the fallback used on first paint
+  // refit once the display font loads, since its metrics differ from the fallback
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
       document.querySelectorAll("[data-library] .book").forEach(fitSpine);
@@ -312,23 +293,15 @@ function renderLibrary() {
 }
 
 function render() {
-  elements.deviceState.textContent = state.listening
-    ? state.speakerMode === "source"
-      ? "Auto call"
-      : state.speakerMode === "diarize"
-        ? "Diarizing"
-        : "Listening"
-    : SpeechRecognition
-      ? "Mic standby"
-      : "Typed mode";
-
-  elements.suggestionBox.textContent = state.lastSuggestion;
-  triggerBudCue(state.lastSuggestion);
+  // While Bud is voicing a suggestion, keep that suggestion on screen until he
+  // finishes — don't let incoming "tracking" status messages wipe it mid-speech.
+  const displayedSuggestion = state.speechSpeaking && state.lastSpokenSuggestion
+    ? state.lastSpokenSuggestion
+    : state.lastSuggestion;
+  elements.suggestionBox.textContent = displayedSuggestion;
+  triggerBudCue(displayedSuggestion);
   if (elements.bud) {
-    // One mood at a time, by precedence. speaking wins (he's talking aloud);
-    // then sleeping when there's no session; then thinking while he waits on
-    // the coach; otherwise he's leaning in, listening. Built to be mutually
-    // exclusive so their animations never stack.
+    // One mood at a time, by precedence: speaking > sleeping > thinking > listening.
     const speaking = Boolean(state.speechSpeaking);
     const sleeping = !state.active && !speaking;
     const thinking = state.active && state.requestingAgent && !speaking;
@@ -337,7 +310,7 @@ function render() {
     elements.bud.classList.toggle("bud--sleeping", sleeping);
     elements.bud.classList.toggle("bud--thinking", thinking);
     elements.bud.classList.toggle("bud--listening", listening);
-    // a soft hoot the moment he wakes (sleeping -> not sleeping)
+    // a soft hoot the moment he wakes
     if (wasSleeping && !sleeping) playHoot();
     wasSleeping = sleeping;
   }
@@ -345,19 +318,11 @@ function render() {
   renderObjectiveDisplay();
   elements.conversationState.textContent = state.conversationState;
   if (elements.coachLens) {
-    elements.coachLens.textContent = state.lastLens && state.lastLens !== "None" ? state.lastLens : "—";
+    elements.coachLens.textContent = state.lastLens && state.lastLens !== "None" ? state.lastLens : "None";
   }
   elements.lastAction.textContent = state.lastAction;
   elements.reviewBox.textContent = state.review;
   elements.liveTranscript.textContent = state.liveTranscript;
-  elements.sessionStatus.textContent = state.active
-    ? state.paused
-      ? "Paused"
-      : state.coachingActive
-        ? "Coaching"
-        : "Listening"
-    : "Inactive";
-  elements.sessionStatus.classList.toggle("active", state.active && !state.paused && state.coachingActive);
 
   elements.pauseButton.disabled = !state.active;
   elements.endButton.disabled = !state.active;
@@ -371,8 +336,6 @@ function render() {
 
   elements.transcriptList.innerHTML = "";
   if (state.transcript.length === 0) {
-    // an idle state with a bit of character instead of an empty box: a quill
-    // waiting over a blank page. Text is deliberately minimal — edit freely.
     const empty = document.createElement("li");
     empty.className = "transcript-empty";
     empty.setAttribute("aria-hidden", "true");
@@ -380,7 +343,7 @@ function render() {
     mark.className = "transcript-empty-mark";
     const note = document.createElement("span");
     note.className = "transcript-empty-note";
-    note.textContent = state.active ? "Listening… the log fills as you talk." : "Nothing logged yet. Bud's pen is ready.";
+    note.textContent = state.active ? "Listening… the log fills as you talk." : "super cool box where the things you say go";
     empty.append(mark, note);
     elements.transcriptList.appendChild(empty);
   }
@@ -449,9 +412,7 @@ function renderVoiceControls() {
   elements.stopVoiceButton.disabled = !supported || !state.speechSpeaking;
 }
 
-// Bud's wake-up one-liners — a random quip greets you when a session starts,
-// since he sleeps until then. Purely flavor; the objective guidance lives in
-// the objective display.
+// A random quip greets you when a session starts.
 const BUD_WAKE_LINES = [
   "That was the strangest dream about persuasion theory ever.",
   "Asleep? No, I was just thinking bro, trust.",
@@ -526,12 +487,11 @@ function renderObjectiveDisplay() {
 function renderBackendStatus() {
   if (!state.health) {
     elements.backendStatus.hidden = false;
-    elements.backendStatus.textContent = "Checking backend...";
+    elements.backendStatus.textContent = "Waking Bud up...";
     return;
   }
 
-  // when the coach is ready there's nothing to act on, so hide the line to
-  // free up room in the advanced settings; only surface the actionable warning
+  // when the coach is ready there's nothing to act on, so hide the line
   if (state.health.agentReady) {
     elements.backendStatus.hidden = true;
     elements.backendStatus.textContent = "";
@@ -539,7 +499,7 @@ function renderBackendStatus() {
   }
 
   elements.backendStatus.hidden = false;
-  elements.backendStatus.textContent = "coach needs OPENAI_API_KEY for model suggestions";
+  elements.backendStatus.textContent = "Bud needs an API key to give live suggestions.";
 }
 
 async function fetchHealth() {
@@ -560,8 +520,7 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   const cleanText = text.trim();
   if (!cleanText || !state.active || state.paused) return;
 
-  // The first chunk after starting a session is the spoken objective, not a
-  // conversation line — capture it as the goal and stop here.
+  // The first chunk after starting a session is the spoken objective.
   if (state.awaitingObjective) {
     setSpokenObjective(cleanText);
     return;
@@ -583,9 +542,8 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   state.transcript.push(line);
 
   if (codeword) {
-    // Debounce: one spoken codeword can be detected several times (formatted +
-    // unformatted finals, overlapping chunks, re-fired recognition). Toggle only
-    // on the first detection within the cooldown window.
+    // Debounce: one spoken codeword can fire several detections. Toggle only on
+    // the first within the cooldown window.
     const now = Date.now();
     if (shouldToggleOnCodeword(now, state.lastCodewordAt, state.codewordCooldownMs)) {
       state.lastCodewordAt = now;
@@ -596,8 +554,8 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
     return line;
   }
 
-  // Earlier runs of a multi-speaker turn defer to the turn's last line so the
-  // coach reacts once, to the newest content.
+  // Earlier runs of a multi-speaker turn defer to the last line, so the coach
+  // reacts once.
   if (metadata.deferCoaching) {
     render();
     return line;
@@ -616,8 +574,6 @@ function addTranscriptLine(text, speaker = state.manualSpeaker, metadata = {}) {
   return line;
 }
 
-// Capture the first spoken chunk of a session as the objective instead of a
-// transcript line. Coaching still waits for the codeword.
 function setSpokenObjective(text) {
   state.goal = text;
   state.awaitingObjective = false;
@@ -656,11 +612,11 @@ async function startSourceSeparatedTranscription() {
       audio: true
     });
 
-    // Me: mic → its own streaming-transcription socket (one known speaker).
+    // Me: mic → its own socket
     state.micSocket = createTranscriptionSocket("me");
     state.micPcm = await startPcmStream(state.micStream, state.micSocket);
 
-    // Them: shared-tab audio → its own socket, if the share included audio.
+    // Them: shared-tab audio → its own socket, if the share included audio
     const themAudioTracks = state.themStream.getAudioTracks();
     if (themAudioTracks.length > 0) {
       state.themSocket = createTranscriptionSocket("them");
@@ -670,7 +626,7 @@ async function startSourceSeparatedTranscription() {
     state.listening = true;
     state.liveTranscript = themAudioTracks.length > 0
       ? "Online call mode listening: mic = Me, shared audio = Them."
-      : "Listening to mic as Me. Shared source had no audio — re-share and pick 'Share tab audio' for Them.";
+      : "Listening to mic as Me. Shared source had no audio. Re-share and pick 'Share tab audio' for Them.";
     render();
   } catch (error) {
     console.error("[source] start failed:", error);
@@ -683,8 +639,8 @@ async function startSourceSeparatedTranscription() {
   }
 }
 
-// One streaming socket per known source. Diarization is off (diarize=0): every
-// turn is attributed to the fixed `speaker` for this socket.
+// One socket per source, diarization off (diarize=0): every turn is attributed
+// to this socket's fixed `speaker`.
 function createTranscriptionSocket(speaker) {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(`${protocol}//${window.location.host}/api/diarize-stream?diarize=0`);
@@ -703,7 +659,7 @@ function createTranscriptionSocket(speaker) {
         .trim();
       if (!text) return;
 
-      // Commit only on the formatted final so a turn is never recorded twice.
+      // Commit only on the formatted final, so a turn isn't recorded twice.
       if (payload.isFinal && payload.isFormatted) {
         if (state.awaitingObjective) {
           setSpokenObjective(text);
@@ -756,8 +712,7 @@ async function startDiarizedTranscription() {
 
     state.diarizeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.diarizeSocket = createDiarizeSocket();
-    // AssemblyAI streaming takes raw PCM16, so stream linear16 from an
-    // AudioWorklet instead of Opus chunks from MediaRecorder.
+    // AssemblyAI streaming takes raw PCM16, so stream linear16 from an AudioWorklet.
     state.diarizePcm = await startPcmStream(state.diarizeStream, state.diarizeSocket);
     state.listening = true;
     const providerName = "AssemblyAI";
@@ -773,7 +728,7 @@ async function startDiarizedTranscription() {
       : error?.name === "NotReadableError"
         ? "the microphone could not start (in use by another app?)"
         : `${error?.name || "error"}: ${error?.message || "unavailable"}`;
-    state.lastSuggestion = `One-mic diarization fell back to manual — ${detail}.`;
+    state.lastSuggestion = `One-mic diarization fell back to manual (${detail}).`;
     startContinuousListening();
     render();
   }
@@ -781,7 +736,7 @@ async function startDiarizedTranscription() {
 
 
 // Stream raw 16 kHz mono PCM16 from a media stream to a transcription websocket.
-// Returns a handle so several streams (e.g. mic + shared audio) can run at once.
+// Returns a handle so several streams can run at once.
 async function startPcmStream(stream, socket) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const context = new AudioContextClass();
@@ -844,9 +799,7 @@ function float32ToPcm16(samples) {
 }
 
 // The provider rejects a new live session while a previous one is still open
-// (error text mentions concurrent sessions, close code 1008). A stuck stream
-// can't be recovered in place, so point the user at the fix instead of a raw
-// error string.
+// (close code 1008). Point the user at the fix instead of a raw error string.
 const CONCURRENT_SESSION_HELP =
   "Too many live sessions are open. End this session, give me a second to groom myself, refresh the page, and then start another session.";
 function isConcurrentSessionError(text) {
@@ -932,16 +885,13 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
     .filter((segment) => segment.text);
   if (cleanSegments.length === 0) return;
 
-  // AssemblyAI emits two end_of_turn finals per turn: an unformatted one, then a
-  // formatted one (punctuation, casing, numbers) with the SAME turn_order. We
-  // commit a turn only on its formatted final — AssemblyAI's own guidance, since
-  // acting on both records every turn twice. Partials and the unformatted final
-  // still drive the live transcript, so words still appear without waiting.
+  // AssemblyAI emits two end_of_turn finals per turn (unformatted, then formatted)
+  // with the same turn_order. Commit only on the formatted one so we don't record
+  // the turn twice; partials still drive the live transcript.
   const isCommit = isFinal && Boolean(meta.isFormatted);
 
-  // Only attributed turns define the speaker clusters, and only at commit time:
-  // the first confident cluster becomes Me (Swap corrects it). Uncertain short
-  // turns are resolved separately and must not pollute the mapping.
+  // Only confident, attributed turns define the clusters, and only at commit time:
+  // the first confident cluster becomes Me (Swap corrects it).
   if (isCommit) {
     cleanSegments.forEach((segment) => {
       if (!segment.uncertain) registerCluster(segment.speaker);
@@ -968,13 +918,12 @@ function handleStreamingSegments(segments, isFinal, meta = {}) {
   }
 }
 
-// Record a completed turn as one transcript line per speaker run. Called once
-// per turn — on its formatted final only — so a turn is never committed twice.
+// Record a completed turn as one transcript line per speaker run.
 function commitFinalStreamingSegments(segments, meta = {}) {
   const text = segments.map((segment) => segment.text).join(" ").trim();
   if (!text) return;
 
-  // First chunk of the session is the spoken objective, not a transcript line.
+  // First chunk of the session is the spoken objective.
   if (state.awaitingObjective) {
     setSpokenObjective(text);
     return;
@@ -984,7 +933,7 @@ function commitFinalStreamingSegments(segments, meta = {}) {
 }
 
 // Add one transcript line per speaker run. Coaching is evaluated once, on the
-// turn's last (newest) line, so a multi-speaker turn does not fire repeatedly.
+// turn's last line.
 function appendTurnLines(segments, turnOrder) {
   const lines = [];
   segments.forEach((segment, index) => {
@@ -994,15 +943,13 @@ function appendTurnLines(segments, turnOrder) {
       speaker = segment.speaker === "them" ? "them" : "me";
       state.lastConfidentSpeaker = speaker;
     } else {
-      // Provisional run: a turn-taking guess (a short reply is usually the
-      // other person).
+      // Provisional run: a short reply is usually the other person.
       speaker = guessShortTurnSpeaker();
     }
 
     state.lastDiarizedSpeaker = speaker;
     const line = addTranscriptLine(segment.text, speaker, {
-      // Uncertain runs carry no cluster, so Swap (which re-maps by cluster)
-      // leaves their heuristic decision intact.
+      // Uncertain runs carry no cluster, so Swap leaves their guess intact.
       cluster: segment.uncertain ? null : segment.cluster,
       turnOrder,
       deferCoaching: index < segments.length - 1
@@ -1012,8 +959,8 @@ function appendTurnLines(segments, turnOrder) {
   return lines;
 }
 
-// A short reply usually comes from the other person than whoever just held the
-// floor. If we have no context yet, default to Me (the user speaks first).
+// A short reply usually comes from whoever didn't just hold the floor. Default
+// to Me (the user speaks first) when there's no context yet.
 function guessShortTurnSpeaker() {
   if (state.lastConfidentSpeaker === "me") return "them";
   if (state.lastConfidentSpeaker === "them") return "me";
@@ -1078,6 +1025,17 @@ function toggleCoaching() {
 }
 
 function maybeRequestAgentSuggestion(line) {
+  // Only chime in after the OTHER person speaks. Reacting to Me's own turn made
+  // the coach jump in mid-sentence, before the partner had even responded. Wait
+  // for a Them line so suggestions land on their actual reply.
+  if (line?.speaker !== "them") {
+    state.phase = "Listening";
+    state.conversationState = "Tracking";
+    state.currentSuggestion = "";
+    state.lastSuggestion = "Tracking. Waiting for their response before suggesting a move.";
+    return;
+  }
+
   const now = Date.now();
   if (now - state.lastCoachRequestAt < state.coachCooldownMs) {
     state.phase = "Listening";
@@ -1171,10 +1129,8 @@ function isImportantSuggestion(payload) {
 }
 
 // ---- Sound effects (off by default) ----
-// Synthesised with Web Audio so nothing has to be bundled or fetched. Two
-// cues, kept quiet: a soft two-note hoot when Bud wakes, and a paper flutter
-// when a fresh suggestion lands. getSoundCtx() returns null unless the user
-// has switched effects on, so audio never fires unasked.
+// Synthesised with Web Audio: a two-note hoot when Bud wakes, a paper flutter
+// when a suggestion lands. getSoundCtx() returns null unless effects are on.
 let soundCtx = null;
 function getSoundCtx() {
   if (!state.soundEffects) return null;
@@ -1278,8 +1234,7 @@ function toggleSpokenSuggestions() {
 function toggleSoundEffects() {
   state.soundEffects = elements.soundEffectsInput.checked;
   state.lastAction = state.soundEffects ? "Sound effects on" : "Sound effects off";
-  // the checkbox click is a user gesture, so it's a valid moment to warm up
-  // the audio context and confirm it's audible with a single hoot
+  // the checkbox click is a user gesture, so warm up the audio context here
   if (state.soundEffects) playHoot();
   render();
 }
@@ -1295,8 +1250,6 @@ function testVoice() {
   speakText("Spoken suggestions are ready.");
 }
 
-// The browser's TTS voices load asynchronously, so populate the picker now and
-// again on the voiceschanged event. value = the SpeechSynthesisVoice.name.
 function getSelectedVoice() {
   if (!speechSynthesis || !state.budVoice) return null;
   return speechSynthesis.getVoices().find((v) => v.name === state.budVoice) || null;
@@ -1316,13 +1269,11 @@ function populateVoices() {
   list.forEach((voice) => {
     const option = document.createElement("option");
     option.value = voice.name;
-    // Bud's house voice (Google UK English Male) is shown as "Default Voice"
     option.textContent =
       voice.name === DEFAULT_BUD_VOICE ? "Default Voice" : `${voice.name} (${voice.lang})`;
     select.appendChild(option);
   });
 
-  // select the saved/default voice if present, otherwise the first available
   if (list.some((voice) => voice.name === state.budVoice)) {
     select.value = state.budVoice;
   } else {
@@ -1331,9 +1282,7 @@ function populateVoices() {
   }
 }
 
-// Speak a sample in whatever voice the dropdown currently shows. Syncing from
-// the select first means the preview button works even when the selection
-// didn't change (clicking the already-selected voice still plays).
+// Speak a sample in whatever voice the dropdown currently shows.
 function previewBudVoice() {
   state.budVoice = elements.budVoiceInput.value;
   speakText("Hi, I'm Bud. I'll sound like this.");
@@ -1467,8 +1416,8 @@ function endSession() {
   if (state.transcript.length > 0) {
     addFollowUp(`Review whether the conversation with ${state.partner} achieved: ${state.goal}`);
   }
-  // Show the basic local summary immediately, then ask the model for a real
-  // review and swap it in. The local one stays as the fallback if that fails.
+  // Show the local summary now, then ask the model for a real review and swap
+  // it in. The local one stays as the fallback.
   const localReview = generateLocalReview();
   state.review = hasConversation ? "Bud is reviewing the conversation…" : localReview;
   state.lastAction = "Session ended";
@@ -1493,7 +1442,7 @@ async function requestReview(fallback) {
     if (!response.ok) throw new Error("review request failed");
     state.review = formatReview(await response.json());
   } catch {
-    // model unavailable (e.g. no API key) — keep the basic local summary
+    // model unavailable — keep the local summary
     state.review = fallback;
   }
   render();
@@ -1648,7 +1597,7 @@ setupRecognition();
 fetchHealth();
 populateVoices();
 if (speechSynthesis) {
-  // voices often aren't ready on first paint; refill when the browser loads them
+  // voices often aren't ready on first paint
   speechSynthesis.addEventListener("voiceschanged", populateVoices);
 }
 render();
