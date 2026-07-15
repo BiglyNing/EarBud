@@ -1186,37 +1186,68 @@ function playPageTurn() {
   src.start(now);
 }
 
+// Chrome garbage-collects a SpeechSynthesisUtterance that only lives in a local
+// variable, which kills its `onend`/`onerror` before they fire — leaving the
+// mouth animating after the audio has stopped. Pinning the active utterance to
+// a module-level reference keeps it alive. The watchdog is a backstop that
+// releases the mouth by an estimated finish time in case `onend` never arrives.
+let activeUtterance = null;
+let speechWatchdog = null;
+
+function stopMouth(utterance) {
+  // Ignore stale events from an utterance we've already replaced or cancelled.
+  if (utterance && utterance !== activeUtterance) return;
+  clearTimeout(speechWatchdog);
+  speechWatchdog = null;
+  activeUtterance = null;
+  state.speechSpeaking = false;
+  render();
+}
+
+function estimateSpeechMs(text, rate) {
+  // ~200 words/min at rate 1, plus a second of slack so the watchdog never
+  // clips real speech — it only rescues a stuck mouth.
+  const words = text.trim().split(/\s+/).length;
+  const wordsPerMs = (200 * (rate || 1)) / 60000;
+  return words / wordsPerMs + 1000;
+}
+
 function speakText(text) {
   if (!SpeechSynthesisUtterance || !speechSynthesis || !text) return;
-  if (state.lastSpokenSuggestion === text && speechSynthesis.speaking) return;
+  // Already voicing or queued to voice this exact line? Don't speak it twice.
+  if (state.lastSpokenSuggestion === text && (speechSynthesis.speaking || speechSynthesis.pending)) return;
 
   speechSynthesis.cancel();
+  clearTimeout(speechWatchdog);
+
   const utterance = new SpeechSynthesisUtterance(text);
+  activeUtterance = utterance;
   const voice = getSelectedVoice();
   if (voice) utterance.voice = voice;
   utterance.volume = state.speechVolume;
   utterance.rate = state.speechRate;
   utterance.pitch = 1;
+  // Mark immediately (not in onstart, which is async) so a duplicate call for
+  // the same line is caught by the guard above before it can queue again.
+  state.lastSpokenSuggestion = text;
   utterance.onstart = () => {
+    if (utterance !== activeUtterance) return;
     state.speechSpeaking = true;
-    state.lastSpokenSuggestion = text;
     render();
   };
-  utterance.onend = () => {
-    state.speechSpeaking = false;
-    render();
-  };
-  utterance.onerror = () => {
-    state.speechSpeaking = false;
-    render();
-  };
+  utterance.onend = () => stopMouth(utterance);
+  utterance.onerror = () => stopMouth(utterance);
   speechSynthesis.speak(utterance);
+  speechWatchdog = setTimeout(() => stopMouth(utterance), estimateSpeechMs(text, state.speechRate));
 }
 
 function stopSpeaking() {
   if (speechSynthesis) {
     speechSynthesis.cancel();
   }
+  clearTimeout(speechWatchdog);
+  speechWatchdog = null;
+  activeUtterance = null;
   state.speechSpeaking = false;
   render();
 }
